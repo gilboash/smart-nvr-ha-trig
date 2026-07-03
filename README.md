@@ -1,0 +1,1 @@
+# smart-nvr-ha-trig
