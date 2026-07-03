@@ -1,0 +1,49 @@
+"""Per-camera class + polygon-zone filtering.
+
+Polygons are stored in normalized [0..1] coords; the bbox center is
+tested against each zone. A detection may match zero or one zone.
+"""
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from typing import Optional
+
+from shapely.geometry import Point, Polygon
+
+from app.db import get_conn
+
+
+@dataclass
+class ZoneShape:
+    zone_id: int
+    name: str
+    polygon: Polygon  # in normalized 0..1 coords
+
+
+def load_zones(camera_id: int) -> list[ZoneShape]:
+    rows = get_conn().execute(
+        "SELECT id, name, polygon_json FROM zones WHERE camera_id = ?", (camera_id,)
+    ).fetchall()
+    shapes: list[ZoneShape] = []
+    for r in rows:
+        pts = json.loads(r["polygon_json"])
+        if len(pts) < 3:
+            continue
+        shapes.append(ZoneShape(zone_id=r["id"], name=r["name"], polygon=Polygon(pts)))
+    return shapes
+
+
+def match_zone(bbox_xyxy: tuple[float, float, float, float],
+               frame_w: int, frame_h: int,
+               zones: list[ZoneShape]) -> Optional[int]:
+    if not zones:
+        return None
+    x1, y1, x2, y2 = bbox_xyxy
+    cx = ((x1 + x2) / 2.0) / max(frame_w, 1)
+    cy = ((y1 + y2) / 2.0) / max(frame_h, 1)
+    p = Point(cx, cy)
+    for z in zones:
+        if z.polygon.contains(p):
+            return z.zone_id
+    return None

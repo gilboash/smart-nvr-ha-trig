@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Camera {{ camera_id }} — smart-nvr{% endblock %}
+{% block content %}
+<h1>Camera <span id="camera-name">#{{ camera_id }}</span></h1>
+<div id="camera-edit" data-camera-id="{{ camera_id }}"></div>
+<script src="/static/camera_edit.js"></script>
+<script src="/static/zone_editor.js"></script>
+{% endblock %}

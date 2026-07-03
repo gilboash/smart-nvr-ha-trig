@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — smart-nvr{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<p>Manage <a href="/cameras">cameras</a> or view recent <a href="/events">events</a>.</p>
+<p>API health: <span id="health">?</span></p>
+<script>
+  fetch('/api/health').then(r => r.json()).then(j => {
+    document.getElementById('health').textContent = j.status;
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+services:
+  smart-nvr:
+    build: .
+    image: smart-nvr-ha-trig:latest
+    container_name: smart-nvr-ha-trig
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+      - ./config/models:/models
+    environment:
+      SNVR_HOST: 0.0.0.0
+      SNVR_PORT: "8080"
+      SNVR_DB_PATH: /data/snvr.db
+      SNVR_SNAPSHOT_DIR: /data/snapshots
+      SNVR_MODEL_DIR: /models
+      SNVR_LOG_LEVEL: INFO
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
