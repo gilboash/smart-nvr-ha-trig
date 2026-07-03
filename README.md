@@ -8,7 +8,7 @@ Phase 1 scope: RTSP capture → YOLO inference (CUDA) → zone/class filter → 
 
 ```powershell
 docker compose up -d --build
-# open http://<windows-ip>:8080
+# open http://<windows-ip>:7070
 ```
 
 Requirements:

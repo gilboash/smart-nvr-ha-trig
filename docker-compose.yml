@@ -5,13 +5,13 @@ services:
     container_name: smart-nvr-ha-trig
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "7070:7070"
     volumes:
       - ./data:/data
       - ./config/models:/models
     environment:
       SNVR_HOST: 0.0.0.0
-      SNVR_PORT: "8080"
+      SNVR_PORT: "7070"
       SNVR_DB_PATH: /data/snvr.db
       SNVR_SNAPSHOT_DIR: /data/snapshots
       SNVR_MODEL_DIR: /models

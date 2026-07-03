@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     host: str = "0.0.0.0"
-    port: int = 8080
+    port: int = 7070
     log_level: str = "INFO"
 
     db_path: Path = Path("./data/snvr.db")
