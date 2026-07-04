@@ -45,7 +45,7 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
 
 
 @router.delete("/zones/{zone_id}", status_code=204)
-async def delete_zone(zone_id: int, request: Request) -> None:
+async def delete_zone(zone_id: int, request: Request):
     row = get_conn().execute("SELECT id FROM zones WHERE id = ?", (zone_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "zone not found")

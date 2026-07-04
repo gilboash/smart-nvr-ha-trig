@@ -86,7 +86,7 @@ async def patch_camera(camera_id: int, body: CameraPatch, request: Request) -> C
 
 
 @router.delete("/{camera_id}", status_code=204)
-async def delete_camera(camera_id: int, request: Request) -> None:
+async def delete_camera(camera_id: int, request: Request):
     _row(camera_id)
     with tx() as conn:
         conn.execute("DELETE FROM cameras WHERE id = ?", (camera_id,))
