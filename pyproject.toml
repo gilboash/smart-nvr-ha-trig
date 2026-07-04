@@ -18,6 +18,7 @@ dependencies = [
     "ultralytics==8.3.40",
     "opencv-python-headless==4.10.0.84",
     "numpy>=1.26",
+    "psutil==6.1.0",
 ]
 
 [project.optional-dependencies]

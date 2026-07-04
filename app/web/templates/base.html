@@ -12,7 +12,35 @@
       <a href="/cameras">Cameras</a>
       <a href="/events">Events</a>
     </nav>
+    <div class="statsbar" id="statsbar">
+      <span id="stat-cpu">CPU —</span>
+      <span id="stat-ram">RAM —</span>
+      <span id="stat-gpu"></span>
+      <span id="stat-device"></span>
+    </div>
   </header>
+  <script>
+    (function () {
+      function fmt(v) { return v == null ? '—' : v; }
+      async function poll() {
+        try {
+          const r = await fetch('/api/stats');
+          if (!r.ok) return;
+          const s = await r.json();
+          document.getElementById('stat-cpu').textContent = 'CPU ' + s.cpu_pct.toFixed(0) + '%';
+          document.getElementById('stat-ram').textContent =
+            'RAM ' + s.ram_used_mb + ' / ' + s.ram_total_mb + ' MB (' + s.ram_pct.toFixed(0) + '%)';
+          if (s.gpu) {
+            document.getElementById('stat-gpu').textContent =
+              s.gpu.name + ' VRAM ' + s.gpu.vram_used_mb + ' / ' + s.gpu.vram_total_mb + ' MB';
+          }
+          document.getElementById('stat-device').textContent = 'device: ' + fmt(s.device);
+        } catch (_) {}
+      }
+      poll();
+      setInterval(poll, 5000);
+    })();
+  </script>
   <main>
     {% block content %}{% endblock %}
   </main>

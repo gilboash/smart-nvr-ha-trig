@@ -44,12 +44,13 @@ app = FastAPI(title="smart-nvr-ha-trig", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
-from app.api import cameras, zones, snapshots, events, ws  # noqa: E402
+from app.api import cameras, zones, snapshots, events, ws, stats  # noqa: E402
 
 app.include_router(cameras.router, prefix="/api")
 app.include_router(zones.router, prefix="/api")
 app.include_router(snapshots.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
+app.include_router(stats.router)
 app.include_router(ws.router)
 
 

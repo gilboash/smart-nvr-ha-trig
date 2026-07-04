@@ -9,7 +9,8 @@ RUN pip install --no-cache-dir \
     pydantic-settings==2.6.1 \
     jinja2==3.1.4 \
     shapely==2.0.6 \
-    python-multipart==0.0.17
+    python-multipart==0.0.17 \
+    psutil==6.1.0
 
 COPY app ./app
 
