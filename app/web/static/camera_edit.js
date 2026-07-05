@@ -57,7 +57,17 @@
 
       <div class="card">
         <h2>Draw a new zone</h2>
-        <p>Click to add vertices, double-click or right-click to close. Drag a vertex to move.</p>
+        <p style="color:var(--muted);font-size:0.88rem">
+          <strong style="color:inherit">Click</strong> to add vertices &nbsp;·&nbsp;
+          <strong style="color:inherit">Double-click</strong> or <strong style="color:inherit">right-click</strong> on the last point to close the polygon &nbsp;·&nbsp;
+          <strong style="color:inherit">Drag</strong> a vertex to move it &nbsp;·&nbsp;
+          <strong style="color:inherit">Z</strong> to undo last vertex &nbsp;·&nbsp;
+          <strong style="color:inherit">Esc</strong> to cancel
+        </p>
+        <p style="color:var(--muted);font-size:0.88rem">
+          <strong style="color:#7ec6e2">Detection</strong> — only trigger YOLO alerts when an object enters this area.<br>
+          <strong style="color:#c07ee2">State (CLIP)</strong> — continuously classify what's in this area using your own labels (e.g. "open, closed"). An event fires when the state changes.
+        </p>
         <div id="zone-editor-host"></div>
       </div>
     `;

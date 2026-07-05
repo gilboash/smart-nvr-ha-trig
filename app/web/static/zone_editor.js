@@ -130,6 +130,7 @@ window.ZoneEditor = (function () {
 
     _onDblClick(e) {
       e.preventDefault();
+      if (this.current.length > 0) this.current.pop(); // second click of dblclick adds a spurious vertex
       this._commit();
     }
 
