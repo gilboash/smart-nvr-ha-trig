@@ -24,6 +24,7 @@ class CLIPClassifier:
         self._preprocess = None
         self._tokenizer = None
         self._load_failed = False
+        self._use_fp16 = False
 
     def _load(self) -> None:
         if self._model is not None:
@@ -37,15 +38,17 @@ class CLIPClassifier:
             self._load_failed = True
             raise RuntimeError("open_clip_torch not installed — run: pip install open_clip_torch Pillow")
         try:
-            precision = "fp16" if self.device != "cpu" else "fp32"
             model, _, preprocess = open_clip.create_model_and_transforms(
-                _MODEL_NAME, pretrained=_MODEL_PRETRAINED, device=self.device, precision=precision,
+                _MODEL_NAME, pretrained=_MODEL_PRETRAINED,
             )
-            model.eval()
+            if self.device != "cpu":
+                model = model.half()
+            model = model.to(self.device).eval()
             self._model = model
             self._preprocess = preprocess
             self._tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
-            logger.info("CLIP ready on %s (%s)", self.device, precision)
+            self._use_fp16 = self.device != "cpu"
+            logger.info("CLIP ready on %s (%s)", self.device, "fp16" if self._use_fp16 else "fp32")
         except Exception as e:
             self._load_failed = True
             logger.error("CLIP load failed: %s", e)
@@ -63,8 +66,9 @@ class CLIPClassifier:
         from PIL import Image
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        dtype = next(self._model.parameters()).dtype
-        image = self._preprocess(Image.fromarray(rgb)).unsqueeze(0).to(self.device, dtype=dtype)
+        image = self._preprocess(Image.fromarray(rgb)).unsqueeze(0).to(self.device)
+        if self._use_fp16:
+            image = image.half()
         text = self._tokenizer(labels).to(self.device)
 
         with torch.no_grad():
