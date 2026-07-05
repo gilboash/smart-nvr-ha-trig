@@ -16,7 +16,7 @@ services:
       SNVR_SNAPSHOT_DIR: /data/snapshots
       SNVR_MODEL_DIR: /models
       SNVR_LOG_LEVEL: INFO
-      SNVR_DEVICE: "cuda:0"
+      SNVR_DEVICE: "${SNVR_DEVICE:-cuda:0}"
     deploy:
       resources:
         reservations:
