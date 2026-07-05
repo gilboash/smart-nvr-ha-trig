@@ -50,7 +50,7 @@
       <div class="card">
         <h2>Zones</h2>
         <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Labels</th><th>Vertices</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Current state</th><th>Vertices</th><th></th></tr></thead>
           <tbody id="zones-body"></tbody>
         </table>
       </div>
@@ -74,16 +74,18 @@
 
     const tbody = root.querySelector('#zones-body');
     if (zones.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4">No zones yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6">No zones yet.</td></tr>';
     } else {
       for (const z of zones) {
         const tr = document.createElement('tr');
+        tr.dataset.zoneId = z.id;
+        tr.dataset.zoneType = z.zone_type;
         const labels = z.state_labels ? z.state_labels.join(', ') : '—';
         tr.innerHTML = `
           <td>${z.id}</td>
           <td>${escapeHtml(z.name)}</td>
           <td><span class="badge ${z.zone_type === 'state' ? 'badge-state' : 'badge-det'}">${z.zone_type}</span></td>
-          <td>${z.zone_type === 'state' ? escapeHtml(labels) : '—'}</td>
+          <td class="zone-state-cell">${z.zone_type === 'state' ? '<span class="muted">…</span>' : '—'}</td>
           <td>${z.polygon.length}</td>
           <td><button class="danger" data-zone="${z.id}">Delete</button></td>
         `;
@@ -95,6 +97,10 @@
         await fetch('/api/zones/' + id, { method: 'DELETE' });
         load();
       }));
+
+      if (zones.some(z => z.zone_type === 'state')) {
+        pollStates(zones);
+      }
     }
 
     let classPicker = null;
@@ -155,6 +161,29 @@
       span.className = 'status-bad';
       span.textContent = 'failed: ' + (j.error || 'unknown');
     }
+  }
+
+  let _stateTimer = null;
+  function pollStates(zones) {
+    if (_stateTimer) clearInterval(_stateTimer);
+    async function refresh() {
+      try {
+        const res = await fetch('/api/cameras/' + cameraId + '/zones/states');
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const [zid, state] of Object.entries(data)) {
+          const tr = root.querySelector(`tr[data-zone-id="${zid}"]`);
+          if (!tr) continue;
+          const cell = tr.querySelector('.zone-state-cell');
+          if (!cell) continue;
+          if (!state) { cell.innerHTML = '<span class="muted">waiting…</span>'; continue; }
+          const ranked = state.ranked.map(([l, p]) => `${escapeHtml(l)} ${p}%`).join(' · ');
+          cell.innerHTML = `<strong>${escapeHtml(state.label)}</strong> <span class="muted">${state.prob}%</span><br><small class="muted">${ranked}</small>`;
+        }
+      } catch (_) {}
+    }
+    refresh();
+    _stateTimer = setInterval(refresh, 2000);
   }
 
   function startPreview(imgEl, boxesCheckbox) {

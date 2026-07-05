@@ -10,6 +10,27 @@ from app.models import Zone, ZoneIn, now_ts
 router = APIRouter(tags=["zones"])
 
 
+@router.get("/cameras/{camera_id}/zones/states")
+async def zone_states(camera_id: int, request: Request) -> dict:
+    """Return current CLIP state for each state zone on this camera."""
+    manager = getattr(request.app.state, "manager", None)
+    infer = manager._inference if manager else None
+    rows = get_conn().execute(
+        "SELECT id, name FROM zones WHERE camera_id = ? AND zone_type = 'state'",
+        (camera_id,),
+    ).fetchall()
+    result = {}
+    for r in rows:
+        zid = r["id"]
+        state = infer.latest_state(zid) if infer else None
+        if state:
+            label, prob, ranked = state
+            result[str(zid)] = {"label": label, "prob": round(prob * 100, 1), "ranked": [[l, round(p * 100, 1)] for l, p in ranked]}
+        else:
+            result[str(zid)] = None
+    return result
+
+
 @router.get("/cameras/{camera_id}/zones")
 async def list_zones(camera_id: int) -> list[Zone]:
     rows = get_conn().execute(

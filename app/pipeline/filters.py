@@ -6,7 +6,7 @@ tested against each zone. A detection may match zero or one zone.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from shapely.geometry import Point, Polygon
@@ -18,7 +18,8 @@ from app.db import get_conn
 class ZoneShape:
     zone_id: int
     name: str
-    polygon: Polygon  # in normalized 0..1 coords
+    polygon: Polygon                    # shapely Polygon for hit-testing
+    points: list = field(default_factory=list)  # raw normalized [(x,y),...] for crop_zone
     zone_type: str = "detection"
     state_labels: Optional[list[str]] = None
 
@@ -36,7 +37,8 @@ def load_zones(camera_id: int) -> list[ZoneShape]:
         zone_type = r["zone_type"] or "detection"
         state_labels = json.loads(r["state_labels_json"]) if r["state_labels_json"] else None
         shapes.append(ZoneShape(
-            zone_id=r["id"], name=r["name"], polygon=Polygon(pts),
+            zone_id=r["id"], name=r["name"],
+            polygon=Polygon(pts), points=pts,
             zone_type=zone_type, state_labels=state_labels,
         ))
     return shapes

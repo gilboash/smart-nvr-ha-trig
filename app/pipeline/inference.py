@@ -233,7 +233,7 @@ class InferenceWorker:
             if now - self._state_last_ts.get(zone.zone_id, 0.0) < _STATE_CHECK_INTERVAL:
                 continue
 
-            roi = crop_zone(frame.bgr, zone.polygon)
+            roi = crop_zone(frame.bgr, zone.points)
             if roi is None or roi.size == 0:
                 continue
 
