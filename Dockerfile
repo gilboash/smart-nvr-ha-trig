@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir \
     "open_clip_torch>=2.24" \
     "Pillow>=10.0"
 
+COPY VERSION ./VERSION
 COPY app ./app
 
 ENV SNVR_HOST=0.0.0.0 \
