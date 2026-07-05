@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 
 from app.settings import settings
+from app.version import VERSION
 
 logger = logging.getLogger("snvr")
 
@@ -100,24 +101,24 @@ async def login_page(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return TEMPLATES.TemplateResponse("dashboard.html", {"request": request, "username": request.session.get("username")})
+    return TEMPLATES.TemplateResponse("dashboard.html", {"request": request, "username": request.session.get("username"), "version": VERSION})
 
 
 @app.get("/cameras", response_class=HTMLResponse)
 async def cameras_page(request: Request):
-    return TEMPLATES.TemplateResponse("cameras.html", {"request": request, "username": request.session.get("username")})
+    return TEMPLATES.TemplateResponse("cameras.html", {"request": request, "username": request.session.get("username"), "version": VERSION})
 
 
 @app.get("/cameras/{camera_id}", response_class=HTMLResponse)
 async def camera_edit_page(request: Request, camera_id: int):
     return TEMPLATES.TemplateResponse(
-        "camera_edit.html", {"request": request, "camera_id": camera_id, "username": request.session.get("username")}
+        "camera_edit.html", {"request": request, "camera_id": camera_id, "username": request.session.get("username"), "version": VERSION}
     )
 
 
 @app.get("/events", response_class=HTMLResponse)
 async def events_page(request: Request):
-    return TEMPLATES.TemplateResponse("events.html", {"request": request, "username": request.session.get("username")})
+    return TEMPLATES.TemplateResponse("events.html", {"request": request, "username": request.session.get("username"), "version": VERSION})
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -126,5 +127,5 @@ async def settings_page(request: Request):
     username = request.session.get("username")
     return TEMPLATES.TemplateResponse(
         "settings.html",
-        {"request": request, "username": username, "users": list_users()},
+        {"request": request, "username": username, "users": list_users(), "version": VERSION},
     )
