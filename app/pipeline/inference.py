@@ -163,6 +163,7 @@ class InferenceWorker:
             device=self.device,
             verbose=False,
             imgsz=640,
+            half=self.device != "cpu",
         )
         if not results:
             return

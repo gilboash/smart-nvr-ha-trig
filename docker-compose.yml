@@ -9,6 +9,7 @@ services:
     volumes:
       - ./data:/data
       - ./config/models:/models
+      - model_cache:/root/.cache
     environment:
       SNVR_HOST: 0.0.0.0
       SNVR_PORT: "7070"
@@ -24,3 +25,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+
+volumes:
+  model_cache:

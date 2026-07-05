@@ -37,14 +37,15 @@ class CLIPClassifier:
             self._load_failed = True
             raise RuntimeError("open_clip_torch not installed — run: pip install open_clip_torch Pillow")
         try:
+            precision = "fp16" if self.device != "cpu" else "fp32"
             model, _, preprocess = open_clip.create_model_and_transforms(
-                _MODEL_NAME, pretrained=_MODEL_PRETRAINED, device=self.device
+                _MODEL_NAME, pretrained=_MODEL_PRETRAINED, device=self.device, precision=precision,
             )
             model.eval()
             self._model = model
             self._preprocess = preprocess
             self._tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
-            logger.info("CLIP ready on %s", self.device)
+            logger.info("CLIP ready on %s (%s)", self.device, precision)
         except Exception as e:
             self._load_failed = True
             logger.error("CLIP load failed: %s", e)
