@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 
@@ -16,6 +17,22 @@ logger = logging.getLogger("snvr")
 
 WEB_DIR = Path(__file__).parent / "web"
 TEMPLATES = Jinja2Templates(directory=str(WEB_DIR / "templates"))
+
+_PUBLIC_PREFIXES = ("/static/", "/api/auth/login", "/api/health")
+_PUBLIC_EXACT = {"/login"}
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        is_public = path in _PUBLIC_EXACT or any(path.startswith(p) for p in _PUBLIC_PREFIXES)
+        if not is_public:
+            user = request.session.get("username")
+            if not user:
+                if path.startswith("/api/") or path.startswith("/ws/"):
+                    return JSONResponse({"detail": "not authenticated"}, status_code=401)
+                return RedirectResponse("/login")
+        return await call_next(request)
 
 
 @asynccontextmanager
@@ -48,6 +65,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="smart-nvr-ha-trig", lifespan=lifespan)
 
 _session_secret = settings.session_secret or secrets.token_hex(32)
+
+# Order matters: add_middleware inserts at the front of the stack, so the LAST
+# add_middleware call becomes the outermost middleware (runs first).
+# We need SessionMiddleware to run before AuthMiddleware so session is populated.
+# Therefore: add AuthMiddleware first (inner), SessionMiddleware second (outer).
+app.add_middleware(AuthMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=_session_secret, max_age=7 * 24 * 3600)
 
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
@@ -61,23 +84,6 @@ app.include_router(events.router, prefix="/api")
 app.include_router(stats.router)
 app.include_router(auth_router.router)
 app.include_router(ws.router)
-
-
-_PUBLIC_PREFIXES = ("/static/", "/api/auth/login", "/api/health")
-_PUBLIC_EXACT = {"/login"}
-
-
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-    path = request.url.path
-    is_public = path in _PUBLIC_EXACT or any(path.startswith(p) for p in _PUBLIC_PREFIXES)
-    if not is_public:
-        user = request.session.get("username")
-        if not user:
-            if path.startswith("/api/") or path.startswith("/ws/"):
-                return JSONResponse({"detail": "not authenticated"}, status_code=401)
-            return RedirectResponse("/login")
-    return await call_next(request)
 
 
 @app.get("/api/health")
