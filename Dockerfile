@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir \
     psutil==6.1.0 \
     bcrypt==4.2.1 \
     itsdangerous==2.2.0 \
-    "transformers>=4.44" \
-    Pillow>=10.0
+    "open_clip_torch>=2.24" \
+    "Pillow>=10.0"
 
 COPY app ./app
 

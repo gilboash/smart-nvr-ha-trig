@@ -1,7 +1,6 @@
-"""CLIP-based zero-shot state classifier.
+"""CLIP-based zero-shot state classifier via open_clip_torch.
 
-Crops a zone ROI from a frame and ranks user-defined text labels
-(e.g. ["open", "half open", "closed"]) by similarity.
+Uses ViT-B/32 (openai weights, safetensors) — no torch.load restriction.
 Loaded lazily — only instantiated when state zones exist.
 """
 from __future__ import annotations
@@ -14,37 +13,42 @@ import numpy as np
 
 logger = logging.getLogger("snvr.clip")
 
-_MODEL_ID = "openai/clip-vit-base-patch32"
+_MODEL_NAME = "ViT-B-32"
+_MODEL_PRETRAINED = "openai"
 
 
 class CLIPClassifier:
     def __init__(self, device: str = "cpu") -> None:
         self.device = device
         self._model = None
-        self._processor = None
+        self._preprocess = None
+        self._tokenizer = None
         self._load_failed = False
 
     def _load(self) -> None:
         if self._model is not None:
             return
         if self._load_failed:
-            raise RuntimeError("CLIP unavailable — install transformers and Pillow")
-        logger.info("loading CLIP model %s on %s", _MODEL_ID, self.device)
+            raise RuntimeError("CLIP unavailable — run: pip install open_clip_torch Pillow")
+        logger.info("loading CLIP model %s/%s on %s", _MODEL_NAME, _MODEL_PRETRAINED, self.device)
         try:
-            from transformers import CLIPModel, CLIPProcessor
+            import open_clip
         except ImportError:
             self._load_failed = True
-            raise RuntimeError("transformers not installed — run: pip install transformers Pillow")
-        self._processor = CLIPProcessor.from_pretrained(_MODEL_ID)
-        self._model = CLIPModel.from_pretrained(_MODEL_ID)
+            raise RuntimeError("open_clip_torch not installed — run: pip install open_clip_torch Pillow")
         try:
-            import torch
-            self._model = self._model.to(self.device)
+            model, _, preprocess = open_clip.create_model_and_transforms(
+                _MODEL_NAME, pretrained=_MODEL_PRETRAINED, device=self.device
+            )
+            model.eval()
+            self._model = model
+            self._preprocess = preprocess
+            self._tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
+            logger.info("CLIP ready on %s", self.device)
         except Exception as e:
-            logger.warning("CLIP to(%s) failed: %s — using cpu", self.device, e)
-            self.device = "cpu"
-        self._model.eval()
-        logger.info("CLIP ready")
+            self._load_failed = True
+            logger.error("CLIP load failed: %s", e)
+            raise
 
     def classify(
         self,
@@ -58,16 +62,15 @@ class CLIPClassifier:
         from PIL import Image
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        image = Image.fromarray(rgb)
-
-        inputs = self._processor(
-            text=labels, images=image, return_tensors="pt", padding=True
-        )
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        image = self._preprocess(Image.fromarray(rgb)).unsqueeze(0).to(self.device)
+        text = self._tokenizer(labels).to(self.device)
 
         with torch.no_grad():
-            outputs = self._model(**inputs)
-            probs = outputs.logits_per_image.softmax(dim=1).squeeze(0).cpu().tolist()
+            img_feat = self._model.encode_image(image)
+            txt_feat = self._model.encode_text(text)
+            img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
+            txt_feat = txt_feat / txt_feat.norm(dim=-1, keepdim=True)
+            probs = (img_feat @ txt_feat.T).softmax(dim=-1).squeeze(0).cpu().tolist()
 
         ranked = sorted(zip(labels, probs), key=lambda x: x[1], reverse=True)
         best_label, best_prob = ranked[0]
