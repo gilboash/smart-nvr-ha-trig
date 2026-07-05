@@ -60,6 +60,8 @@ class ZoneIn(BaseModel):
     polygon: list[tuple[float, float]] = Field(min_length=3)
     snapshot_w: int = Field(gt=0)
     snapshot_h: int = Field(gt=0)
+    zone_type: str = "detection"  # "detection" | "state"
+    state_labels: Optional[list[str]] = None  # only for zone_type="state"
 
     @field_validator("polygon")
     @classmethod
@@ -77,18 +79,23 @@ class Zone(BaseModel):
     polygon: list[tuple[float, float]]
     snapshot_w: int
     snapshot_h: int
+    zone_type: str
+    state_labels: Optional[list[str]]
     created_at: float
 
     @classmethod
     def from_row(cls, row) -> "Zone":
+        raw = dict(row)
         return cls(
-            id=row["id"],
-            camera_id=row["camera_id"],
-            name=row["name"],
-            polygon=json.loads(row["polygon_json"]),
-            snapshot_w=row["snapshot_w"],
-            snapshot_h=row["snapshot_h"],
-            created_at=row["created_at"],
+            id=raw["id"],
+            camera_id=raw["camera_id"],
+            name=raw["name"],
+            polygon=json.loads(raw["polygon_json"]),
+            snapshot_w=raw["snapshot_w"],
+            snapshot_h=raw["snapshot_h"],
+            zone_type=raw.get("zone_type", "detection") or "detection",
+            state_labels=json.loads(raw["state_labels_json"]) if raw.get("state_labels_json") else None,
+            created_at=raw["created_at"],
         )
 
 

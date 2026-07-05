@@ -37,9 +37,20 @@ window.ZoneEditor = (function () {
       controls.innerHTML = `
         <label>Zone name</label>
         <input class="zone-name" placeholder="e.g. walkway" value="zone-1">
-        <button class="save primary">Save polygon</button>
-        <button class="cancel">Cancel current</button>
-        <button class="reload">Refresh snapshot</button>
+        <div class="zone-type-row" style="margin-top:0.5rem">
+          <label style="font-weight:600;margin-right:1rem">Zone type:</label>
+          <label style="margin-right:1rem"><input type="radio" name="zone-type" value="detection" checked> Detection</label>
+          <label><input type="radio" name="zone-type" value="state"> State (CLIP)</label>
+        </div>
+        <div class="state-labels-row" style="display:none;margin-top:0.5rem">
+          <label>State labels <span style="font-weight:normal;color:var(--muted)">(comma-separated, e.g. open, closed)</span></label>
+          <input class="state-labels-input" placeholder="open, half open, closed" style="width:100%">
+        </div>
+        <div style="margin-top:0.5rem">
+          <button class="save primary">Save polygon</button>
+          <button class="cancel">Cancel current</button>
+          <button class="reload">Refresh snapshot</button>
+        </div>
       `;
       this.host.append(controls);
 
@@ -64,6 +75,11 @@ window.ZoneEditor = (function () {
       controls.querySelector('.reload').addEventListener('click', () => {
         this.img.src = this.imgUrl + '?t=' + Date.now();
       });
+
+      controls.querySelectorAll('input[name="zone-type"]').forEach(r => r.addEventListener('change', () => {
+        const isState = controls.querySelector('input[name="zone-type"]:checked').value === 'state';
+        controls.querySelector('.state-labels-row').style.display = isState ? '' : 'none';
+      }));
     }
 
     setExistingPolygons(polys) {
@@ -175,13 +191,15 @@ window.ZoneEditor = (function () {
       if (this.polys.length === 0) { alert('Draw at least one polygon first.'); return; }
       const name = this.controls.querySelector('.zone-name').value.trim() || 'zone';
       const poly = this.polys[this.polys.length - 1];
+      const zone_type = this.controls.querySelector('input[name="zone-type"]:checked').value;
+      let state_labels = null;
+      if (zone_type === 'state') {
+        const raw = this.controls.querySelector('.state-labels-input').value;
+        state_labels = raw.split(',').map(s => s.trim()).filter(Boolean);
+        if (state_labels.length === 0) { alert('Enter at least one label for a state zone.'); return; }
+      }
       if (this._saveCb) {
-        this._saveCb({
-          name,
-          polygon: poly,
-          snapshot_w: this.natW,
-          snapshot_h: this.natH,
-        });
+        this._saveCb({ name, polygon: poly, snapshot_w: this.natW, snapshot_h: this.natH, zone_type, state_labels });
       }
     }
 

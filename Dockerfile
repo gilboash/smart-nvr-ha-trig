@@ -12,7 +12,9 @@ RUN pip install --no-cache-dir \
     python-multipart==0.0.17 \
     psutil==6.1.0 \
     bcrypt==4.2.1 \
-    itsdangerous==2.2.0
+    itsdangerous==2.2.0 \
+    "transformers>=4.44" \
+    Pillow>=10.0
 
 COPY app ./app
 

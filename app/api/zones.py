@@ -23,11 +23,14 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
     cam = get_conn().execute("SELECT id FROM cameras WHERE id = ?", (camera_id,)).fetchone()
     if cam is None:
         raise HTTPException(404, "camera not found")
+    if body.zone_type == "state" and not body.state_labels:
+        raise HTTPException(400, "state zones require at least one label")
     with tx() as conn:
         cur = conn.execute(
             """
-            INSERT INTO zones (camera_id, name, polygon_json, snapshot_w, snapshot_h, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO zones (camera_id, name, polygon_json, snapshot_w, snapshot_h,
+                               zone_type, state_labels_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 camera_id,
@@ -35,6 +38,8 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
                 json.dumps([list(p) for p in body.polygon]),
                 body.snapshot_w,
                 body.snapshot_h,
+                body.zone_type,
+                json.dumps(body.state_labels) if body.state_labels else None,
                 now_ts(),
             ),
         )

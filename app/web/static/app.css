@@ -98,5 +98,7 @@ img.snapshot { display: block; max-width: 100%; height: auto; border-radius: 4px
 .badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; background: #2b3140; font-size: 0.75rem; }
 .badge.open { background: #2f6f5b; }
 .badge.closed { background: #4a4a4a; }
+.badge-det { background: #1e3a5f; color: #7ec6e2; }
+.badge-state { background: #3a2f5f; color: #c07ee2; }
 .status-ok { color: #7ee2b8; }
 .status-bad { color: #e27e7e; }

@@ -50,7 +50,7 @@
       <div class="card">
         <h2>Zones</h2>
         <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Vertices</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Labels</th><th>Vertices</th><th></th></tr></thead>
           <tbody id="zones-body"></tbody>
         </table>
       </div>
@@ -68,9 +68,12 @@
     } else {
       for (const z of zones) {
         const tr = document.createElement('tr');
+        const labels = z.state_labels ? z.state_labels.join(', ') : '—';
         tr.innerHTML = `
           <td>${z.id}</td>
           <td>${escapeHtml(z.name)}</td>
+          <td><span class="badge ${z.zone_type === 'state' ? 'badge-state' : 'badge-det'}">${z.zone_type}</span></td>
+          <td>${z.zone_type === 'state' ? escapeHtml(labels) : '—'}</td>
           <td>${z.polygon.length}</td>
           <td><button class="danger" data-zone="${z.id}">Delete</button></td>
         `;

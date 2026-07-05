@@ -95,6 +95,11 @@ MIGRATIONS: list[str] = [
         created_at REAL NOT NULL
     );
     """,
+    # v3 — state classification zones (CLIP)
+    """
+    ALTER TABLE zones ADD COLUMN zone_type TEXT NOT NULL DEFAULT 'detection';
+    ALTER TABLE zones ADD COLUMN state_labels_json TEXT;
+    """,
 ]
 
 
