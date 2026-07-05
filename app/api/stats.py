@@ -4,6 +4,8 @@ from fastapi import APIRouter, Request
 
 import psutil
 
+from app.coco_classes import COCO_CLASSES
+
 router = APIRouter(tags=["stats"])
 
 
@@ -40,3 +42,8 @@ async def get_stats(request: Request) -> dict:
         "gpu": gpu,
         "device": device_str,
     }
+
+
+@router.get("/api/classes")
+async def get_classes() -> list[str]:
+    return COCO_CLASSES

@@ -65,8 +65,8 @@
             <input name="model" value="yolov8n.pt">
           </div>
           <div>
-            <label>Classes (comma-separated)</label>
-            <input name="classes" value="person">
+            <label>Detection classes</label>
+            <div id="add-classes-picker"></div>
           </div>
           <div>
             <label>Hysteresis (s)</label>
@@ -78,19 +78,23 @@
     `;
     root.appendChild(card);
 
-    card.querySelector('#add-form').addEventListener('submit', onSubmit);
+    let classPicker = null;
+    ClassPicker.create(card.querySelector('#add-classes-picker'), ['person']).then(p => { classPicker = p; });
+    card.querySelector('#add-form').addEventListener('submit', e => onSubmit(e, classPicker));
     root.querySelectorAll('button.del').forEach(b => b.addEventListener('click', onDelete));
   }
 
-  async function onSubmit(e) {
+  async function onSubmit(e, classPicker) {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const classes = classPicker ? classPicker.selected() : ['person'];
+    if (classes.length === 0) { alert('Select at least one detection class.'); return; }
     const body = {
       name: fd.get('name'),
       rtsp_url: fd.get('rtsp_url'),
       target_fps: Number(fd.get('target_fps')),
       model: fd.get('model'),
-      classes: fd.get('classes').split(',').map(s => s.trim()).filter(Boolean),
+      classes,
       hysteresis_s: Number(fd.get('hysteresis_s')),
     };
     const res = await fetch('/api/cameras', {

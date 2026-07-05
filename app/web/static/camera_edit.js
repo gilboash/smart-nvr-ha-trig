@@ -32,7 +32,7 @@
             </select></div>
             <div><label>Target FPS</label><input name="target_fps" type="number" step="0.5" min="0" max="30" value="${camera.target_fps}"></div>
             <div><label>Model</label><input name="model" value="${escapeHtml(camera.model)}"></div>
-            <div><label>Classes</label><input name="classes" value="${escapeHtml(camera.classes.join(', '))}"></div>
+            <div><label>Detection classes</label><div id="edit-classes-picker"></div></div>
             <div><label>Hysteresis (s)</label><input name="hysteresis_s" type="number" step="0.5" min="0.5" max="120" value="${camera.hysteresis_s}"></div>
           </div>
           <button class="primary" type="submit">Save</button>
@@ -84,7 +84,9 @@
       }));
     }
 
-    root.querySelector('#edit-form').addEventListener('submit', onSave);
+    let classPicker = null;
+    ClassPicker.create(root.querySelector('#edit-classes-picker'), camera.classes).then(p => { classPicker = p; });
+    root.querySelector('#edit-form').addEventListener('submit', e => onSave(e, classPicker));
     root.querySelector('.probe').addEventListener('click', onProbe);
 
     editor = ZoneEditor.create(
@@ -105,16 +107,18 @@
     startPreview(root.querySelector('#preview'), root.querySelector('#show-boxes'));
   }
 
-  async function onSave(e) {
+  async function onSave(e, classPicker) {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const classes = classPicker ? classPicker.selected() : camera.classes;
+    if (classes.length === 0) { alert('Select at least one detection class.'); return; }
     const body = {
       name: fd.get('name'),
       rtsp_url: fd.get('rtsp_url'),
       enabled: fd.get('enabled') === '1',
       target_fps: Number(fd.get('target_fps')),
       model: fd.get('model'),
-      classes: fd.get('classes').split(',').map(s => s.trim()).filter(Boolean),
+      classes,
       hysteresis_s: Number(fd.get('hysteresis_s')),
     };
     const res = await fetch('/api/cameras/' + cameraId, {

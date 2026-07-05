@@ -11,6 +11,7 @@
     <nav>
       <a href="/cameras">Cameras</a>
       <a href="/events">Events</a>
+      <a href="/settings">Settings</a>
     </nav>
     <div class="statsbar" id="statsbar">
       <span id="stat-cpu">CPU —</span>
@@ -18,10 +19,14 @@
       <span id="stat-gpu"></span>
       <span id="stat-device"></span>
     </div>
+    {% if username %}
+    <form method="post" action="/api/auth/logout" class="logout-form">
+      <button type="submit" class="logout-btn">{{ username }} · logout</button>
+    </form>
+    {% endif %}
   </header>
   <script>
     (function () {
-      function fmt(v) { return v == null ? '—' : v; }
       async function poll() {
         try {
           const r = await fetch('/api/stats');
@@ -34,7 +39,7 @@
             document.getElementById('stat-gpu').textContent =
               s.gpu.name + ' VRAM ' + s.gpu.vram_used_mb + ' / ' + s.gpu.vram_total_mb + ' MB';
           }
-          document.getElementById('stat-device').textContent = 'device: ' + fmt(s.device);
+          document.getElementById('stat-device').textContent = 'device: ' + (s.device || '—');
         } catch (_) {}
       }
       poll();

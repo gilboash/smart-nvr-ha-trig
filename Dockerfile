@@ -10,7 +10,9 @@ RUN pip install --no-cache-dir \
     jinja2==3.1.4 \
     shapely==2.0.6 \
     python-multipart==0.0.17 \
-    psutil==6.1.0
+    psutil==6.1.0 \
+    bcrypt==4.2.1 \
+    itsdangerous==2.2.0
 
 COPY app ./app
 

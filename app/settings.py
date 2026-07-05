@@ -24,5 +24,8 @@ class Settings(BaseSettings):
     preview_fps: float = 2.0
     frame_queue_max: int = 8
 
+    session_secret: str = ""
+    admin_password: str = ""
+
 
 settings = Settings()

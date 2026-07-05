@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Settings — smart-nvr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+
+<div class="card">
+  <h2>Change password</h2>
+  {% if error %}<p class="status-bad">{{ error }}</p>{% endif %}
+  {% if success %}<p class="status-ok">{{ success }}</p>{% endif %}
+  <form method="post" action="/api/auth/change-password">
+    <div class="row">
+      <div>
+        <label>Current password</label>
+        <input name="current_password" type="password" required>
+      </div>
+      <div>
+        <label>New password</label>
+        <input name="new_password" type="password" required minlength="8">
+      </div>
+      <div>
+        <label>Confirm new password</label>
+        <input name="confirm_password" type="password" required minlength="8">
+      </div>
+    </div>
+    <button class="primary" type="submit">Change password</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Users</h2>
+  <table>
+    <thead><tr><th>Username</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.created_at | int }}</td>
+        <td>
+          {% if u.username != username %}
+          <form method="post" action="/api/auth/users/{{ u.username }}/delete" style="display:inline">
+            <button class="danger" type="submit" onclick="return confirm('Delete user {{ u.username }}?')">Delete</button>
+          </form>
+          {% else %}
+          <span class="badge">you</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:1.25rem">Add user</h3>
+  <form method="post" action="/api/auth/users">
+    <div class="row">
+      <div>
+        <label>Username</label>
+        <input name="new_username" required>
+      </div>
+      <div>
+        <label>Password (min 8 chars)</label>
+        <input name="new_password" type="password" required minlength="8">
+      </div>
+    </div>
+    <button class="primary" type="submit">Add user</button>
+  </form>
+</div>
+{% endblock %}

@@ -47,6 +47,7 @@ def tx() -> Iterator[sqlite3.Connection]:
 
 MIGRATIONS: list[str] = [
     # v1
+    # (cameras, zones, episodes, schema_version)
     """
     CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY);
     CREATE TABLE IF NOT EXISTS cameras (
@@ -84,6 +85,15 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX IF NOT EXISTS idx_episodes_cam_start ON episodes(camera_id, start_ts DESC);
     CREATE INDEX IF NOT EXISTS idx_episodes_open ON episodes(camera_id, end_ts) WHERE end_ts IS NULL;
+    """,
+    # v2 — users table for session auth
+    """
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at REAL NOT NULL
+    );
     """,
 ]
 

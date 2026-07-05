@@ -19,6 +19,8 @@ dependencies = [
     "opencv-python-headless==4.10.0.84",
     "numpy>=1.26",
     "psutil==6.1.0",
+    "bcrypt==4.2.1",
+    "itsdangerous==2.2.0",
 ]
 
 [project.optional-dependencies]
