@@ -63,7 +63,8 @@ class CLIPClassifier:
         from PIL import Image
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        image = self._preprocess(Image.fromarray(rgb)).unsqueeze(0).to(self.device)
+        dtype = next(self._model.parameters()).dtype
+        image = self._preprocess(Image.fromarray(rgb)).unsqueeze(0).to(self.device, dtype=dtype)
         text = self._tokenizer(labels).to(self.device)
 
         with torch.no_grad():
