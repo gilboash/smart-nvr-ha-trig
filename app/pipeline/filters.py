@@ -19,18 +19,26 @@ class ZoneShape:
     zone_id: int
     name: str
     polygon: Polygon  # in normalized 0..1 coords
+    zone_type: str = "detection"
+    state_labels: Optional[list[str]] = None
 
 
 def load_zones(camera_id: int) -> list[ZoneShape]:
     rows = get_conn().execute(
-        "SELECT id, name, polygon_json FROM zones WHERE camera_id = ?", (camera_id,)
+        "SELECT id, name, polygon_json, zone_type, state_labels_json FROM zones WHERE camera_id = ?",
+        (camera_id,),
     ).fetchall()
     shapes: list[ZoneShape] = []
     for r in rows:
         pts = json.loads(r["polygon_json"])
         if len(pts) < 3:
             continue
-        shapes.append(ZoneShape(zone_id=r["id"], name=r["name"], polygon=Polygon(pts)))
+        zone_type = r["zone_type"] or "detection"
+        state_labels = json.loads(r["state_labels_json"]) if r["state_labels_json"] else None
+        shapes.append(ZoneShape(
+            zone_id=r["id"], name=r["name"], polygon=Polygon(pts),
+            zone_type=zone_type, state_labels=state_labels,
+        ))
     return shapes
 
 
