@@ -22,12 +22,19 @@ class CLIPClassifier:
         self.device = device
         self._model = None
         self._processor = None
+        self._load_failed = False
 
     def _load(self) -> None:
         if self._model is not None:
             return
+        if self._load_failed:
+            raise RuntimeError("CLIP unavailable — install transformers and Pillow")
         logger.info("loading CLIP model %s on %s", _MODEL_ID, self.device)
-        from transformers import CLIPModel, CLIPProcessor
+        try:
+            from transformers import CLIPModel, CLIPProcessor
+        except ImportError:
+            self._load_failed = True
+            raise RuntimeError("transformers not installed — run: pip install transformers Pillow")
         self._processor = CLIPProcessor.from_pretrained(_MODEL_ID)
         self._model = CLIPModel.from_pretrained(_MODEL_ID)
         try:
