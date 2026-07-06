@@ -12,7 +12,7 @@ router = APIRouter(tags=["zones"])
 
 @router.get("/cameras/{camera_id}/zones/states")
 async def zone_states(camera_id: int, request: Request) -> dict:
-    """Return current CLIP state for each state zone on this camera."""
+    """Return current few-shot classification state for each state zone on this camera."""
     manager = getattr(request.app.state, "manager", None)
     infer = manager._inference if manager else None
     rows = get_conn().execute(
@@ -50,8 +50,8 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
         cur = conn.execute(
             """
             INSERT INTO zones (camera_id, name, polygon_json, snapshot_w, snapshot_h,
-                               zone_type, state_labels_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                               zone_type, state_labels_json, state_question, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 camera_id,
@@ -61,6 +61,7 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
                 body.snapshot_h,
                 body.zone_type,
                 json.dumps(body.state_labels) if body.state_labels else None,
+                body.state_question or None,
                 now_ts(),
             ),
         )

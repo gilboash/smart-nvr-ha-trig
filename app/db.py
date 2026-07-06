@@ -100,6 +100,21 @@ MIGRATIONS: list[str] = [
     ALTER TABLE zones ADD COLUMN zone_type TEXT NOT NULL DEFAULT 'detection';
     ALTER TABLE zones ADD COLUMN state_labels_json TEXT;
     """,
+    # v4 — VQA question per state zone (column kept; approach superseded by few-shot)
+    """
+    ALTER TABLE zones ADD COLUMN state_question TEXT;
+    """,
+    # v5 — few-shot training samples per state zone
+    """
+    CREATE TABLE IF NOT EXISTS zone_samples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        zone_id INTEGER NOT NULL REFERENCES zones(id) ON DELETE CASCADE,
+        label TEXT NOT NULL,
+        image_data BLOB NOT NULL,
+        created_at REAL NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_samples_zone ON zone_samples(zone_id);
+    """,
 ]
 
 

@@ -22,11 +22,12 @@ class ZoneShape:
     points: list = field(default_factory=list)  # raw normalized [(x,y),...] for crop_zone
     zone_type: str = "detection"
     state_labels: Optional[list[str]] = None
+    state_question: Optional[str] = None
 
 
 def load_zones(camera_id: int) -> list[ZoneShape]:
     rows = get_conn().execute(
-        "SELECT id, name, polygon_json, zone_type, state_labels_json FROM zones WHERE camera_id = ?",
+        "SELECT id, name, polygon_json, zone_type, state_labels_json, state_question FROM zones WHERE camera_id = ?",
         (camera_id,),
     ).fetchall()
     shapes: list[ZoneShape] = []
@@ -40,6 +41,7 @@ def load_zones(camera_id: int) -> list[ZoneShape]:
             zone_id=r["id"], name=r["name"],
             polygon=Polygon(pts), points=pts,
             zone_type=zone_type, state_labels=state_labels,
+            state_question=r["state_question"] or None,
         ))
     return shapes
 

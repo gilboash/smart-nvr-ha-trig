@@ -1,8 +1,8 @@
 services:
   smart-nvr:
     build: .
-    image: smart-nvr-ha-trig:latest
-    container_name: smart-nvr-ha-trig
+    image: naco-real-smart-nvr:latest
+    container_name: naco-real-smart-nvr
     restart: unless-stopped
     ports:
       - "7070:7070"

@@ -1,7 +1,8 @@
-"""Inference worker: single shared YOLO model + optional CLIP state classifier.
+"""Inference worker: single shared YOLO model + few-shot state classifier.
 
-YOLO handles object detection zones; CLIP handles state classification zones
-(e.g. curtain open/closed). Both run in the same thread to avoid GPU contention.
+YOLO handles object detection zones; the few-shot classifier handles state zones
+(e.g. blind open/closed) by comparing MobileNetV3 embeddings to user-captured examples.
+Both run in the same thread to avoid GPU contention.
 """
 from __future__ import annotations
 
@@ -16,15 +17,13 @@ import torch
 
 from app.pipeline.aggregator import EpisodeAggregator
 from app.pipeline.capture import CameraConfig
-from app.pipeline.clip_classifier import CLIPClassifier, crop_zone
+from app.pipeline.few_shot_classifier import FewShotClassifier, crop_zone
 from app.pipeline.filters import load_zones, match_zone
 from app.pipeline.frame_bus import Frame, FrameBus
 from app.pipeline.overlay import Detection
 from app.settings import settings
 
 logger = logging.getLogger("snvr.infer")
-
-_STATE_CHECK_INTERVAL = 1.0  # seconds between CLIP classifications per zone
 
 
 def _resolve_device(pref: str) -> str:
@@ -50,17 +49,20 @@ class InferenceWorker:
         self._latest_detections: dict[int, list[Detection]] = {}
         self._latest_detections_ts: dict[int, float] = {}
         self._detections_lock = threading.Lock()
-        # State classification (CLIP)
+        # State classification (few-shot)
         self._state_last_ts: dict[int, float] = {}      # zone_id → last check ts
         self._state_last_label: dict[int, str] = {}     # zone_id → last label
         self._state_latest: dict[int, tuple[str, float, list]] = {}  # zone_id → (label, prob, ranked)
         self._state_lock = threading.Lock()
+        # Embedding cache: zone_id → {label: [emb, ...]}
+        self._zone_embeddings: dict[int, dict[str, list]] = {}
+        self._embeddings_lock = threading.Lock()
         self.aggregator = EpisodeAggregator()
 
         self.device = _resolve_device(settings.device)
         self._model = None
         self._model_class_names: dict[int, str] = {}
-        self._clip: Optional[CLIPClassifier] = None
+        self._few_shot: Optional[FewShotClassifier] = None
 
     def _load_model(self, weights: str = "yolov8n.pt"):
         from ultralytics import YOLO
@@ -78,10 +80,48 @@ class InferenceWorker:
         self._model_class_names = dict(model.names) if hasattr(model, "names") else {}
         logger.info("inference device = %s, classes = %d", self.device, len(self._model_class_names))
 
-    def _ensure_clip(self) -> CLIPClassifier:
-        if self._clip is None:
-            self._clip = CLIPClassifier(device=self.device)
-        return self._clip
+    def _ensure_few_shot(self) -> FewShotClassifier:
+        if self._few_shot is None:
+            self._few_shot = FewShotClassifier(device=self.device)
+        return self._few_shot
+
+    def invalidate_zone_embeddings(self, zone_id: int) -> None:
+        with self._embeddings_lock:
+            self._zone_embeddings.pop(zone_id, None)
+
+    def _load_zone_embeddings(self, zone_id: int) -> dict[str, list]:
+        """Load training samples from DB and embed them; result is cached."""
+        with self._embeddings_lock:
+            if zone_id in self._zone_embeddings:
+                return self._zone_embeddings[zone_id]
+
+        from app.db import get_conn
+        import cv2 as _cv2
+        import numpy as _np
+
+        rows = get_conn().execute(
+            "SELECT label, image_data FROM zone_samples WHERE zone_id = ? ORDER BY id",
+            (zone_id,),
+        ).fetchall()
+
+        fs = self._ensure_few_shot()
+        class_embs: dict[str, list] = {}
+        for r in rows:
+            label = r["label"]
+            arr = _np.frombuffer(r["image_data"], dtype=_np.uint8)
+            bgr = _cv2.imdecode(arr, _cv2.IMREAD_COLOR)
+            if bgr is None:
+                continue
+            try:
+                emb = fs.embed(bgr)
+            except Exception:
+                logger.exception("embed failed for zone %d sample", zone_id)
+                continue
+            class_embs.setdefault(label, []).append(emb)
+
+        with self._embeddings_lock:
+            self._zone_embeddings[zone_id] = class_embs
+        return class_embs
 
     def start(self) -> None:
         if self._thread is not None:
@@ -112,6 +152,8 @@ class InferenceWorker:
         self._camera_hysteresis = {r["id"]: r["hysteresis_s"] for r in rows}
         self._zone_cache.clear()
         self._zone_cache_ts.clear()
+        with self._embeddings_lock:
+            self._zone_embeddings.clear()
 
     def latest_detections(self, camera_id: int, max_age_s: float = 2.0) -> list[Detection]:
         with self._detections_lock:
@@ -221,27 +263,31 @@ class InferenceWorker:
             self._publish(ev)
 
     def _process_state(self, frame: Frame) -> None:
-        """Run CLIP classification on state zones for this camera's frame."""
+        """Run few-shot classifier on state zones for this camera's frame."""
         all_zones = self._zones_for(frame.camera_id)
         state_zones = [z for z in all_zones if z.zone_type == "state" and z.state_labels]
         if not state_zones:
             return
 
         now = time.time()
-        clip = self._ensure_clip()
 
         for zone in state_zones:
-            if now - self._state_last_ts.get(zone.zone_id, 0.0) < _STATE_CHECK_INTERVAL:
+            if now - self._state_last_ts.get(zone.zone_id, 0.0) < settings.state_check_interval:
                 continue
+
+            class_embs = self._load_zone_embeddings(zone.zone_id)
+            missing = [lbl for lbl in zone.state_labels if lbl not in class_embs]
+            if missing:
+                continue  # not yet trained for all labels; skip silently
 
             roi = crop_zone(frame.bgr, zone.points)
             if roi is None or roi.size == 0:
                 continue
 
             try:
-                label, prob, ranked = clip.classify(roi, zone.state_labels)
+                label, prob, ranked = self._ensure_few_shot().classify(roi, class_embs)
             except Exception:
-                logger.exception("CLIP classify failed zone %d", zone.zone_id)
+                logger.exception("few-shot classify failed zone %d", zone.zone_id)
                 continue
 
             self._state_last_ts[zone.zone_id] = now
@@ -254,7 +300,7 @@ class InferenceWorker:
                 continue
 
             self._state_last_label[zone.zone_id] = label
-            logger.info("state zone %d (%s): %s → %s (%.0f%%)",
+            logger.info("few-shot zone %d (%s): %s → %s (%.0f%%)",
                         zone.zone_id, zone.name, prev_label or "?", label, prob * 100)
 
             frame_copy = copy.copy(frame.bgr)

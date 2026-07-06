@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     preview_fps: float = 2.0
     frame_queue_max: int = 4
+    state_check_interval: float = 10.0  # seconds between VQA queries per zone
 
     session_secret: str = ""
     admin_password: str = ""

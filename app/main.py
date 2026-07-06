@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
         await manager.stop()
 
 
-app = FastAPI(title="smart-nvr-ha-trig", lifespan=lifespan)
+app = FastAPI(title="naco-real-smart-nvr", lifespan=lifespan)
 
 _session_secret = settings.session_secret or secrets.token_hex(32)
 
@@ -76,10 +76,11 @@ app.add_middleware(SessionMiddleware, secret_key=_session_secret, max_age=7 * 24
 
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
-from app.api import cameras, zones, snapshots, events, ws, stats, auth as auth_router  # noqa: E402
+from app.api import cameras, zones, snapshots, events, ws, stats, auth as auth_router, zone_samples  # noqa: E402
 
 app.include_router(cameras.router, prefix="/api")
 app.include_router(zones.router, prefix="/api")
+app.include_router(zone_samples.router, prefix="/api")
 app.include_router(snapshots.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(stats.router)

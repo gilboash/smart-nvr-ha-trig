@@ -35,15 +35,21 @@ window.ZoneEditor = (function () {
           <label style="font-weight:600;display:block;margin-bottom:0.25rem">Zone type</label>
           <div style="display:flex;gap:1.25rem;padding-top:0.35rem">
             <label style="cursor:pointer"><input type="radio" name="zone-type" value="detection" checked> Detection</label>
-            <label style="cursor:pointer"><input type="radio" name="zone-type" value="state"> State (CLIP)</label>
+            <label style="cursor:pointer"><input type="radio" name="zone-type" value="state"> State (few-shot)</label>
           </div>
         </div>
         <div class="state-labels-row" style="display:none;grid-column:1/-1">
-          <label style="font-weight:600;display:block;margin-bottom:0.25rem">
-            State labels
-            <span style="font-weight:normal;color:var(--muted);font-size:0.85rem">&nbsp;comma-separated, e.g. open, closed</span>
-          </label>
-          <input class="state-labels-input" placeholder="open, half open, closed" style="width:100%">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+            <div>
+              <label style="font-weight:600;display:block;margin-bottom:0.2rem">State 1 label</label>
+              <input class="state-label1-input" placeholder="closed" style="width:100%;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-weight:600;display:block;margin-bottom:0.2rem">State 2 label</label>
+              <input class="state-label2-input" placeholder="open" style="width:100%;box-sizing:border-box">
+            </div>
+          </div>
+          <p style="color:var(--muted);font-size:0.82rem;margin:0.4rem 0 0">After saving, use the Train button on the camera page to capture examples for each state.</p>
         </div>
       `;
       this.host.append(top);
@@ -207,9 +213,10 @@ window.ZoneEditor = (function () {
       const zone_type = this.top.querySelector('input[name="zone-type"]:checked').value;
       let state_labels = null;
       if (zone_type === 'state') {
-        const raw = this.top.querySelector('.state-labels-input').value;
-        state_labels = raw.split(',').map(s => s.trim()).filter(Boolean);
-        if (state_labels.length === 0) { alert('Enter at least one label for a state zone.'); return; }
+        const l1 = this.top.querySelector('.state-label1-input').value.trim();
+        const l2 = this.top.querySelector('.state-label2-input').value.trim();
+        if (!l1 || !l2) { alert('Enter both state labels (e.g. "closed" and "open").'); return; }
+        state_labels = [l1, l2];
       }
       if (this._saveCb) {
         this._saveCb({ name, polygon: poly, snapshot_w: this.natW, snapshot_h: this.natH, zone_type, state_labels });

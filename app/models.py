@@ -61,7 +61,8 @@ class ZoneIn(BaseModel):
     snapshot_w: int = Field(gt=0)
     snapshot_h: int = Field(gt=0)
     zone_type: str = "detection"  # "detection" | "state"
-    state_labels: Optional[list[str]] = None  # only for zone_type="state"
+    state_labels: Optional[list[str]] = None   # [yes_label, no_label] for state zones
+    state_question: Optional[str] = None        # VQA yes/no question for state zones
 
     @field_validator("polygon")
     @classmethod
@@ -81,6 +82,7 @@ class Zone(BaseModel):
     snapshot_h: int
     zone_type: str
     state_labels: Optional[list[str]]
+    state_question: Optional[str]
     created_at: float
 
     @classmethod
@@ -95,6 +97,7 @@ class Zone(BaseModel):
             snapshot_h=raw["snapshot_h"],
             zone_type=raw.get("zone_type", "detection") or "detection",
             state_labels=json.loads(raw["state_labels_json"]) if raw.get("state_labels_json") else None,
+            state_question=raw.get("state_question") or None,
             created_at=raw["created_at"],
         )
 

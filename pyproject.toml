@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "smart-nvr-ha-trig"
+name = "naco-real-smart-nvr"
 version = "0.1.0"
 description = "Lightweight YOLO inference on RTSP cameras with zones, running alongside Frigate, emitting HA-friendly episode events."
 requires-python = ">=3.11"
@@ -21,7 +21,7 @@ dependencies = [
     "psutil==6.1.0",
     "bcrypt==4.2.1",
     "itsdangerous==2.2.0",
-    "open_clip_torch>=2.24",
+    "Pillow>=10.0",
     "Pillow>=10.0",
 ]
 
