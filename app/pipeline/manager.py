@@ -36,6 +36,14 @@ class PipelineManager:
         self.sqlite_sink = SQLiteSink()
         self.publishers = [self.sqlite_sink, self.ws_broadcaster]
 
+        from app.settings import settings as _settings
+        self._mqtt_publisher = None
+        if _settings.mqtt_host:
+            from app.events.mqtt_publisher import MQTTPublisher
+            self._mqtt_publisher = MQTTPublisher()
+            self._mqtt_publisher.connect()
+            self.publishers.append(self._mqtt_publisher)
+
         self._inference = InferenceWorker(
             self.bus, self.publishers, self.snapshot_store
         )
@@ -51,6 +59,9 @@ class PipelineManager:
         if self._inference is not None:
             self._inference.stop()
             self._inference = None
+        if self._mqtt_publisher is not None:
+            self._mqtt_publisher.disconnect()
+            self._mqtt_publisher = None
 
     def reconcile(self) -> None:
         """Sync running capture threads to DB camera list."""

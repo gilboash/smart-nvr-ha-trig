@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir \
     bcrypt==4.2.1 \
     itsdangerous==2.2.0 \
     "Pillow>=10.0" \
-    "Pillow>=10.0"
+    "paho-mqtt>=1.6,<2.0"
 
 COPY VERSION ./VERSION
 COPY app ./app

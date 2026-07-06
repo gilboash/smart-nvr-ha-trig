@@ -28,5 +28,13 @@ class Settings(BaseSettings):
     session_secret: str = ""
     admin_password: str = ""
 
+    # MQTT / Home Assistant integration (leave mqtt_host blank to disable)
+    mqtt_host: str = ""
+    mqtt_port: int = 1883
+    mqtt_username: str = ""
+    mqtt_password: str = ""
+    mqtt_discovery_prefix: str = "homeassistant"
+    mqtt_topic_prefix: str = "naco_nvr"
+
 
 settings = Settings()
