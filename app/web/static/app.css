@@ -102,3 +102,40 @@ img.snapshot { display: block; max-width: 100%; height: auto; border-radius: 4px
 .badge-state { background: #3a2f5f; color: #c07ee2; }
 .status-ok { color: #7ee2b8; }
 .status-bad { color: #e27e7e; }
+.cam-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 1rem;
+}
+.cam-card {
+  background: #171a21;
+  border: 1px solid #23272e;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cam-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #23272e;
+}
+.cam-name { font-weight: 600; }
+.cam-status { font-size: 0.75rem; }
+.cam-img-wrap { position: relative; background: #0a0c10; min-height: 120px; }
+.cam-preview { display: block; width: 100%; height: auto; }
+.cam-offline {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+.btn-sm { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
+.btn-danger { background: #7a2f2f; border-color: #9a3a3a; }
+.btn-danger:hover { background: #9a3a3a; }
+.filter-bar { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+.pager { display: flex; gap: 0.75rem; margin-top: 1rem; }
+.video-row td { background: #0f1115; padding: 0.5rem; }

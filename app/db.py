@@ -120,6 +120,21 @@ MIGRATIONS: list[str] = [
     ALTER TABLE cameras ADD COLUMN detection_threshold REAL NOT NULL DEFAULT 0.5;
     ALTER TABLE zones ADD COLUMN state_threshold REAL NOT NULL DEFAULT 0.6;
     """,
+    # v7 — clip recordings
+    """
+    CREATE TABLE IF NOT EXISTS clips (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        episode_id INTEGER REFERENCES episodes(id) ON DELETE SET NULL,
+        camera_id INTEGER NOT NULL REFERENCES cameras(id) ON DELETE CASCADE,
+        zone_id INTEGER REFERENCES zones(id) ON DELETE SET NULL,
+        class_name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        duration_s REAL,
+        frame_count INTEGER,
+        created_at REAL NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_clips_cam_ts ON clips(camera_id, created_at DESC);
+    """,
 ]
 
 

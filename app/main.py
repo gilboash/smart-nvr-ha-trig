@@ -76,7 +76,7 @@ app.add_middleware(SessionMiddleware, secret_key=_session_secret, max_age=7 * 24
 
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
-from app.api import cameras, zones, snapshots, events, ws, stats, auth as auth_router, zone_samples, env_settings  # noqa: E402
+from app.api import cameras, zones, snapshots, events, ws, stats, auth as auth_router, zone_samples, env_settings, clips  # noqa: E402
 
 app.include_router(cameras.router, prefix="/api")
 app.include_router(zones.router, prefix="/api")
@@ -84,6 +84,7 @@ app.include_router(zone_samples.router, prefix="/api")
 app.include_router(env_settings.router)
 app.include_router(snapshots.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
+app.include_router(clips.router, prefix="/api")
 app.include_router(stats.router)
 app.include_router(auth_router.router)
 app.include_router(ws.router)
@@ -121,6 +122,11 @@ async def camera_edit_page(request: Request, camera_id: int):
 @app.get("/events", response_class=HTMLResponse)
 async def events_page(request: Request):
     return TEMPLATES.TemplateResponse("events.html", {"request": request, "username": request.session.get("username"), "version": VERSION})
+
+
+@app.get("/clips", response_class=HTMLResponse)
+async def clips_page(request: Request):
+    return TEMPLATES.TemplateResponse("clips.html", {"request": request, "username": request.session.get("username"), "version": VERSION})
 
 
 @app.get("/settings", response_class=HTMLResponse)

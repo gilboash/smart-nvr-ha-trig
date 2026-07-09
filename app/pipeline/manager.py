@@ -34,7 +34,9 @@ class PipelineManager:
         self.snapshot_store = SnapshotStore()
         self.ws_broadcaster = WSBroadcaster()
         self.sqlite_sink = SQLiteSink()
-        self.publishers = [self.sqlite_sink, self.ws_broadcaster]
+        from app.pipeline.clip_recorder import ClipRecorder
+        self.clip_recorder = ClipRecorder()
+        self.publishers = [self.sqlite_sink, self.ws_broadcaster, self.clip_recorder]
 
         from app.settings import settings as _settings
         self._mqtt_publisher = None
@@ -47,6 +49,7 @@ class PipelineManager:
         self._inference = InferenceWorker(
             self.bus, self.publishers, self.snapshot_store
         )
+        self._inference.set_clip_recorder(self.clip_recorder)
         self._inference.start()
         self.reconcile()
 
