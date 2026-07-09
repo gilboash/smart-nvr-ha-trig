@@ -38,6 +38,9 @@ window.ZoneEditor = (function () {
             <label style="cursor:pointer"><input type="radio" name="zone-type" value="state"> State (few-shot)</label>
           </div>
         </div>
+        <div class="detection-only-row" style="grid-column:1/-1;padding-top:0.25rem">
+          <label style="cursor:pointer"><input type="checkbox" class="clip-enabled-input" checked> Record video clips on detection events</label>
+        </div>
         <div class="state-labels-row" style="display:none;grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem">
             <div>
@@ -101,6 +104,7 @@ window.ZoneEditor = (function () {
       top.querySelectorAll('input[name="zone-type"]').forEach(r => r.addEventListener('change', () => {
         const isState = top.querySelector('input[name="zone-type"]:checked').value === 'state';
         top.querySelector('.state-labels-row').style.display = isState ? '' : 'none';
+        top.querySelector('.detection-only-row').style.display = isState ? 'none' : '';
       }));
     }
 
@@ -217,15 +221,19 @@ window.ZoneEditor = (function () {
       const zone_type = this.top.querySelector('input[name="zone-type"]:checked').value;
       let state_labels = null;
       let state_threshold = 0.6;
+      let clip_enabled = true;
       if (zone_type === 'state') {
         const l1 = this.top.querySelector('.state-label1-input').value.trim();
         const l2 = this.top.querySelector('.state-label2-input').value.trim();
         if (!l1 || !l2) { alert('Enter both state labels (e.g. "closed" and "open").'); return; }
         state_labels = [l1, l2];
         state_threshold = Number(this.top.querySelector('.state-threshold-input').value) || 0.6;
+        clip_enabled = false;
+      } else {
+        clip_enabled = this.top.querySelector('.clip-enabled-input').checked;
       }
       if (this._saveCb) {
-        this._saveCb({ name, polygon: poly, snapshot_w: this.natW, snapshot_h: this.natH, zone_type, state_labels, state_threshold });
+        this._saveCb({ name, polygon: poly, snapshot_w: this.natW, snapshot_h: this.natH, zone_type, state_labels, state_threshold, clip_enabled });
       }
     }
 

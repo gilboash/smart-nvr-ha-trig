@@ -121,6 +121,7 @@ MIGRATIONS: list[str] = [
     ALTER TABLE zones ADD COLUMN state_threshold REAL NOT NULL DEFAULT 0.6;
     """,
     # v7 — clip recordings
+    # (note: migration text preserved verbatim — already applied to existing DBs)
     """
     CREATE TABLE IF NOT EXISTS clips (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,6 +135,10 @@ MIGRATIONS: list[str] = [
         created_at REAL NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_clips_cam_ts ON clips(camera_id, created_at DESC);
+    """,
+    # v8 — per-zone clip recording toggle
+    """
+    ALTER TABLE zones ADD COLUMN clip_enabled INTEGER NOT NULL DEFAULT 1;
     """,
 ]
 

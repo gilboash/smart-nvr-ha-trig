@@ -51,8 +51,8 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
             """
             INSERT INTO zones (camera_id, name, polygon_json, snapshot_w, snapshot_h,
                                zone_type, state_labels_json, state_question,
-                               state_threshold, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               state_threshold, clip_enabled, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 camera_id,
@@ -64,6 +64,7 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
                 json.dumps(body.state_labels) if body.state_labels else None,
                 body.state_question or None,
                 body.state_threshold,
+                int(body.clip_enabled),
                 now_ts(),
             ),
         )

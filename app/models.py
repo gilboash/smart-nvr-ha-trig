@@ -61,6 +61,7 @@ class Camera(BaseModel):
 
 class ZonePatch(BaseModel):
     state_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    clip_enabled: Optional[bool] = None
 
 
 class ZoneIn(BaseModel):
@@ -72,6 +73,7 @@ class ZoneIn(BaseModel):
     state_labels: Optional[list[str]] = None
     state_question: Optional[str] = None
     state_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
+    clip_enabled: bool = True
 
     @field_validator("polygon")
     @classmethod
@@ -93,6 +95,7 @@ class Zone(BaseModel):
     state_labels: Optional[list[str]]
     state_question: Optional[str]
     state_threshold: float
+    clip_enabled: bool
     created_at: float
 
     @classmethod
@@ -109,6 +112,7 @@ class Zone(BaseModel):
             state_labels=json.loads(raw["state_labels_json"]) if raw.get("state_labels_json") else None,
             state_question=raw.get("state_question") or None,
             state_threshold=raw.get("state_threshold") or 0.6,
+            clip_enabled=bool(raw.get("clip_enabled", 1)),
             created_at=raw["created_at"],
         )
 

@@ -93,6 +93,14 @@ class ClipRecorder(EventPublisher):
         # Only detection ENTER events (state zone events are excluded)
         if event.kind != "ENTER" or event.class_name.startswith("state:"):
             return
+        # Respect per-zone clip_enabled flag
+        if event.zone_id is not None:
+            from app.db import get_conn
+            row = get_conn().execute(
+                "SELECT clip_enabled FROM zones WHERE id = ?", (event.zone_id,)
+            ).fetchone()
+            if row is not None and not row["clip_enabled"]:
+                return
 
         with self._active_lock:
             existing = self._active.get(event.camera_id)

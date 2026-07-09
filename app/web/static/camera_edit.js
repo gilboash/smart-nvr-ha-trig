@@ -52,7 +52,7 @@
       <div class="card">
         <h2>Zones</h2>
         <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Current state</th><th>MQTT threshold</th><th>Vertices</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Current state</th><th>MQTT threshold</th><th>Clips</th><th>Vertices</th><th></th></tr></thead>
           <tbody id="zones-body"></tbody>
         </table>
       </div>
@@ -96,12 +96,18 @@
                value="${z.state_threshold ?? 0.6}" data-zone-id="${z.id}"
                style="width:4.5rem" title="Min confidence to report to MQTT/HA - below this reports unknown">`
           : 'n/a';
+        const clipCell = z.zone_type === 'detection'
+          ? `<input type="checkbox" class="clip-enabled-cb" data-zone-id="${z.id}"
+               title="Record a video clip when this zone triggers a detection event"
+               ${z.clip_enabled ? 'checked' : ''}>`
+          : 'n/a';
         tr.innerHTML = `
           <td>${z.id}</td>
           <td>${escapeHtml(z.name)}</td>
           <td><span class="badge ${z.zone_type === 'state' ? 'badge-state' : 'badge-det'}">${z.zone_type}</span></td>
           <td class="zone-state-cell">${stateCell}</td>
           <td>${threshCell}</td>
+          <td>${clipCell}</td>
           <td>${z.polygon.length}</td>
           <td style="white-space:nowrap">${trainBtn}<button class="danger del-btn" data-zone-id="${z.id}">Delete</button></td>
         `;
@@ -129,6 +135,15 @@
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ state_threshold: val }),
+        });
+      }));
+
+      tbody.querySelectorAll('.clip-enabled-cb').forEach(cb => cb.addEventListener('change', async e => {
+        const zoneId = Number(e.currentTarget.dataset.zoneId);
+        await fetch('/api/zones/' + zoneId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clip_enabled: e.currentTarget.checked }),
         });
       }));
 
