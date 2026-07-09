@@ -72,6 +72,10 @@
             <label>Hysteresis (s)</label>
             <input name="hysteresis_s" type="number" step="0.5" min="0.5" max="120" value="5">
           </div>
+          <div>
+            <label>Detection threshold</label>
+            <input name="detection_threshold" type="number" step="0.05" min="0" max="1" value="0.5" title="Minimum YOLO confidence to trigger an event (0–1)">
+          </div>
         </div>
         <button class="primary" type="submit">Add camera</button>
       </form>
@@ -96,6 +100,7 @@
       model: fd.get('model'),
       classes,
       hysteresis_s: Number(fd.get('hysteresis_s')),
+      detection_threshold: Number(fd.get('detection_threshold')),
     };
     const res = await fetch('/api/cameras', {
       method: 'POST',
