@@ -11,28 +11,69 @@ from app.settings import settings
 
 router = APIRouter(prefix="/clips", tags=["clips"])
 
+_BASE_SELECT = (
+    "SELECT cl.*, c.name AS camera_name, z.name AS zone_name "
+    "FROM clips cl "
+    "JOIN cameras c ON c.id = cl.camera_id "
+    "LEFT JOIN zones z ON z.id = cl.zone_id "
+)
+
 
 @router.get("")
-async def list_clips(camera_id: int | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
-    conn = get_conn()
+async def list_clips(
+    camera_id: int | None = None,
+    zone_id: int | None = None,
+    after_ts: float | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    where, params = [], []
     if camera_id is not None:
-        rows = conn.execute(
-            "SELECT cl.*, c.name AS camera_name FROM clips cl "
-            "JOIN cameras c ON c.id = cl.camera_id "
-            "WHERE cl.camera_id = ? ORDER BY cl.created_at DESC LIMIT ? OFFSET ?",
-            (camera_id, limit, offset),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT cl.*, c.name AS camera_name FROM clips cl "
-            "JOIN cameras c ON c.id = cl.camera_id "
-            "ORDER BY cl.created_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        ).fetchall()
+        where.append("cl.camera_id = ?")
+        params.append(camera_id)
+    if zone_id is not None:
+        where.append("cl.zone_id = ?")
+        params.append(zone_id)
+    if after_ts is not None:
+        where.append("cl.created_at >= ?")
+        params.append(after_ts)
+    sql = _BASE_SELECT
+    if where:
+        sql += "WHERE " + " AND ".join(where) + " "
+    sql += "ORDER BY cl.created_at DESC LIMIT ? OFFSET ?"
+    params += [limit, offset]
+    rows = get_conn().execute(sql, params).fetchall()
     return [dict(r) for r in rows]
 
 
-# Literal routes must come before parameterized ones
+@router.get("/summary")
+async def clips_summary() -> list[dict]:
+    """Cameras (and their zones) that have at least one clip — for filter dropdowns."""
+    rows = get_conn().execute(
+        """
+        SELECT cl.camera_id, c.name AS camera_name,
+               cl.zone_id, z.name AS zone_name, COUNT(*) AS clip_count
+        FROM clips cl
+        JOIN cameras c ON c.id = cl.camera_id
+        LEFT JOIN zones z ON z.id = cl.zone_id
+        GROUP BY cl.camera_id, cl.zone_id
+        ORDER BY c.name, COALESCE(z.name, '')
+        """
+    ).fetchall()
+    cameras: dict[int, dict] = {}
+    for r in rows:
+        cid = r["camera_id"]
+        if cid not in cameras:
+            cameras[cid] = {"camera_id": cid, "camera_name": r["camera_name"], "zones": []}
+        if r["zone_id"] is not None:
+            cameras[cid]["zones"].append({
+                "zone_id": r["zone_id"],
+                "zone_name": r["zone_name"] or "—",
+                "clip_count": r["clip_count"],
+            })
+    return list(cameras.values())
+
+
 @router.get("/stats")
 async def clip_stats() -> dict:
     row = get_conn().execute(
