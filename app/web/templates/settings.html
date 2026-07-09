@@ -4,6 +4,41 @@
 <h1>Settings</h1>
 
 <div class="card">
+  <h2>Environment configuration</h2>
+  <p style="color:var(--muted);font-size:0.88rem;margin-top:0">
+    Changes are written to <code>.env</code>. Run <code>docker compose up -d</code> (no rebuild needed) to apply.
+  </p>
+  <form id="env-form">
+    <h3 style="margin-bottom:0.5rem">MQTT / Home Assistant</h3>
+    <div class="row">
+      <div><label>MQTT host</label><input name="SNVR_MQTT_HOST" placeholder="192.168.1.x (blank to disable)"></div>
+      <div><label>MQTT port</label><input name="SNVR_MQTT_PORT" type="number" min="1" max="65535"></div>
+      <div><label>MQTT username</label><input name="SNVR_MQTT_USERNAME"></div>
+      <div><label>MQTT password</label><input name="SNVR_MQTT_PASSWORD" type="password"></div>
+      <div><label>Discovery prefix</label><input name="SNVR_MQTT_DISCOVERY_PREFIX"></div>
+      <div><label>Topic prefix</label><input name="SNVR_MQTT_TOPIC_PREFIX"></div>
+    </div>
+    <h3 style="margin-bottom:0.5rem;margin-top:1rem">System</h3>
+    <div class="row">
+      <div><label>Log level</label>
+        <select name="SNVR_LOG_LEVEL">
+          <option>DEBUG</option><option>INFO</option><option>WARNING</option><option>ERROR</option>
+        </select>
+      </div>
+      <div><label>Device</label><input name="SNVR_DEVICE" placeholder="auto / cpu / cuda:0"></div>
+      <div><label>State check interval (s)</label><input name="SNVR_STATE_CHECK_INTERVAL" type="number" step="1" min="1"></div>
+    </div>
+    <h3 style="margin-bottom:0.5rem;margin-top:1rem">Security</h3>
+    <div class="row">
+      <div><label>Admin password</label><input name="SNVR_ADMIN_PASSWORD" type="password" placeholder="leave blank to keep current"></div>
+      <div><label>Session secret</label><input name="SNVR_SESSION_SECRET" type="password" placeholder="leave blank to keep current"></div>
+    </div>
+    <button class="primary" type="submit" style="margin-top:0.75rem">Save to .env</button>
+    <span id="env-status" style="margin-left:1rem;font-size:0.9rem"></span>
+  </form>
+</div>
+
+<div class="card">
   <h2>Change password</h2>
   {% if error %}<p class="status-bad">{{ error }}</p>{% endif %}
   {% if success %}<p class="status-ok">{{ success }}</p>{% endif %}
@@ -64,4 +99,5 @@
     <button class="primary" type="submit">Add user</button>
   </form>
 </div>
+<script src="/static/settings.js?v={{ version }}"></script>
 {% endblock %}

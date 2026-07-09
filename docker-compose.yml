@@ -13,6 +13,7 @@ services:
       - ./data:/data
       - ./config/models:/models
       - model_cache:/root/.cache
+      - ./.env:/app/.env
     environment:
       SNVR_HOST: 0.0.0.0
       SNVR_PORT: "7070"
