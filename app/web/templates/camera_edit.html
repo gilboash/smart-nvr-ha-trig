@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Camera <span id="camera-name">#{{ camera_id }}</span></h1>
 <div id="camera-edit" data-camera-id="{{ camera_id }}"></div>
-<script src="/static/multiselect.js"></script>
-<script src="/static/camera_edit.js"></script>
-<script src="/static/zone_editor.js"></script>
+<script src="/static/multiselect.js?v={{ version }}"></script>
+<script src="/static/camera_edit.js?v={{ version }}"></script>
+<script src="/static/zone_editor.js?v={{ version }}"></script>
 {% endblock %}
