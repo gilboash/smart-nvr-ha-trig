@@ -69,6 +69,17 @@ async def run_cleanup(request: Request) -> dict:
     return {"removed": removed}
 
 
+@router.get("/{clip_id}/thumb.jpg")
+async def get_clip_thumb(clip_id: int):
+    row = get_conn().execute("SELECT path FROM clips WHERE id = ?", (clip_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "clip not found")
+    thumb_path = Path(row["path"]).with_suffix(".jpg")
+    if not thumb_path.exists():
+        raise HTTPException(404, "thumbnail not available")
+    return FileResponse(str(thumb_path), media_type="image/jpeg")
+
+
 @router.get("/{clip_id}/video.mp4")
 async def get_clip_video(clip_id: int):
     row = get_conn().execute("SELECT path FROM clips WHERE id = ?", (clip_id,)).fetchone()
@@ -89,5 +100,11 @@ async def delete_clip(clip_id: int):
         conn.execute("DELETE FROM clips WHERE id = ?", (clip_id,))
     try:
         os.remove(row["path"])
+    except OSError:
+        pass
+    try:
+        thumb = Path(row["path"]).with_suffix(".jpg")
+        if thumb.exists():
+            thumb.unlink()
     except OSError:
         pass

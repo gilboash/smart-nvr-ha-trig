@@ -9,6 +9,7 @@ Only detection events trigger clips. State zone events are ignored.
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
@@ -37,6 +38,7 @@ class _ActiveClip:
     started_at: float
     deadline: float                                  # wall-clock time to stop collecting
     frames: list = field(default_factory=list)       # list of (ts, jpeg_bytes)
+    thumb_jpeg: Optional[bytes] = None               # snapshot at detection moment
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
@@ -123,6 +125,7 @@ class ClipRecorder(EventPublisher):
 
             # Snapshot current pre-buffer
             pre = list(self._pre_buffer.get(event.camera_id, []))
+            thumb_jpeg = pre[-1][1] if pre else None
             ac = _ActiveClip(
                 episode_id=event.episode_id,
                 camera_id=event.camera_id,
@@ -131,6 +134,7 @@ class ClipRecorder(EventPublisher):
                 started_at=time.time(),
                 deadline=time.time() + self._post_s,
                 frames=list(pre),
+                thumb_jpeg=thumb_jpeg,
             )
             self._active[event.camera_id] = ac
 
@@ -173,6 +177,13 @@ class ClipRecorder(EventPublisher):
         except Exception:
             logger.exception("failed to write clip %s", out_path)
             return
+
+        if ac.thumb_jpeg:
+            thumb_path = out_path.with_suffix(".jpg")
+            try:
+                thumb_path.write_bytes(ac.thumb_jpeg)
+            except Exception:
+                logger.warning("failed to write thumbnail %s", thumb_path)
 
         duration_s = frames[-1][0] - frames[0][0] if len(frames) > 1 else 0.0
         self._save_to_db(ac, out_path, len(frames), duration_s)
@@ -241,6 +252,12 @@ class ClipRecorder(EventPublisher):
         for r in rows:
             try:
                 os.remove(r["path"])
+            except OSError:
+                pass
+            try:
+                thumb = Path(r["path"]).with_suffix(".jpg")
+                if thumb.exists():
+                    thumb.unlink()
             except OSError:
                 pass
             with tx() as conn:

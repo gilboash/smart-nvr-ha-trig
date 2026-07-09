@@ -71,6 +71,7 @@
     table.innerHTML = `
       <thead>
         <tr>
+          <th></th>
           <th>Camera</th>
           <th>Class</th>
           <th>Zone</th>
@@ -88,6 +89,7 @@
       tr.style.cursor = 'pointer';
       tr.dataset.clipId = clip.id;
       tr.innerHTML = `
+        <td class="clip-thumb-cell"><img class="clip-thumb" src="/api/clips/${clip.id}/thumb.jpg" alt="" loading="lazy" onerror="this.style.display='none'"></td>
         <td>${escapeHtml(clip.camera_name || ('#' + clip.camera_id))}</td>
         <td>${escapeHtml(clip.class_name)}</td>
         <td>${clip.zone_id ?? '—'}</td>
@@ -137,7 +139,7 @@
     const videoRow = document.createElement('tr');
     videoRow.className = 'video-row';
     const td = document.createElement('td');
-    td.colSpan = 6;
+    td.colSpan = 7;
     td.style.padding = '0.5rem';
 
     const video = document.createElement('video');
