@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from dataclasses import dataclass
 from typing import Optional
 
+os.environ.setdefault("OPENCV_FFMPEG_LOGLEVEL", "-8")  # suppress RTSP decoder noise (h264 warnings etc.)
 import cv2
 
 from app.pipeline.frame_bus import Frame, FrameBus
