@@ -15,10 +15,55 @@
   // ── Init ──────────────────────────────────────────────────────────────────
 
   async function init() {
-    const r = await fetch('/api/clips/summary');
-    if (r.ok) summary = await r.json();
+    const [sumRes, statsRes] = await Promise.all([
+      fetch('/api/clips/summary'),
+      fetch('/api/clips/stats'),
+    ]);
+    if (sumRes.ok) summary = await sumRes.json();
+    if (statsRes.ok) renderStorageCard(await statsRes.json());
     buildControls();
     load();
+  }
+
+  function renderStorageCard(stats) {
+    let card = document.getElementById('clips-storage-card');
+    if (!card) {
+      card = document.createElement('div');
+      card.id = 'clips-storage-card';
+      card.className = 'clips-storage-card';
+      root.appendChild(card);
+    }
+
+    const total = stats.disk_bytes || 0;
+    card.innerHTML =
+      `<div class="storage-total">` +
+      `<strong>${humanBytes(total)}</strong> used &nbsp;·&nbsp; ${stats.count} clips` +
+      `</div>`;
+
+    const cams = stats.per_camera || [];
+    if (cams.length) {
+      const grid = document.createElement('div');
+      grid.className = 'storage-cams';
+      for (const cam of cams) {
+        const pct = total > 0 ? (cam.disk_bytes / total * 100) : 0;
+        const row = document.createElement('div');
+        row.className = 'storage-cam-row';
+        row.innerHTML =
+          `<span class="storage-cam-name">${esc(cam.camera_name)}</span>` +
+          `<div class="storage-bar-wrap"><div class="storage-bar" style="width:${pct.toFixed(1)}%"></div></div>` +
+          `<span class="storage-cam-size">${humanBytes(cam.disk_bytes)}</span>` +
+          `<span class="storage-cam-count">${cam.clip_count} clips</span>`;
+        grid.appendChild(row);
+      }
+      card.appendChild(grid);
+    }
+  }
+
+  function humanBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
   }
 
   // ── Controls ──────────────────────────────────────────────────────────────

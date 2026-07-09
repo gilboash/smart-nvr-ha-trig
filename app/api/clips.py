@@ -76,25 +76,42 @@ async def clips_summary() -> list[dict]:
 
 @router.get("/stats")
 async def clip_stats() -> dict:
-    row = get_conn().execute(
+    conn = get_conn()
+    row = conn.execute(
         "SELECT COUNT(*) AS cnt, MIN(created_at) AS oldest, MAX(created_at) AS newest FROM clips"
     ).fetchone()
+
+    # Per-camera breakdown: sum actual file sizes from DB paths
+    clip_rows = conn.execute(
+        "SELECT cl.camera_id, c.name AS camera_name, cl.path "
+        "FROM clips cl JOIN cameras c ON c.id = cl.camera_id"
+    ).fetchall()
+    cam_stats: dict[int, dict] = {}
     total_bytes = 0
-    clips_dir = settings.clips_dir
-    if clips_dir.is_dir():
-        for f in clips_dir.iterdir():
-            if f.is_file():
-                try:
-                    total_bytes += f.stat().st_size
-                except OSError:
-                    pass
+    for cr in clip_rows:
+        cid = cr["camera_id"]
+        if cid not in cam_stats:
+            cam_stats[cid] = {"camera_id": cid, "camera_name": cr["camera_name"],
+                               "clip_count": 0, "disk_bytes": 0}
+        cam_stats[cid]["clip_count"] += 1
+        for p in (Path(cr["path"]), Path(cr["path"]).with_suffix(".jpg")):
+            try:
+                sz = p.stat().st_size
+                cam_stats[cid]["disk_bytes"] += sz
+                total_bytes += sz
+            except OSError:
+                pass
+
+    per_camera = sorted(cam_stats.values(), key=lambda c: c["disk_bytes"], reverse=True)
+
     return {
         "count": row["cnt"] or 0,
         "oldest_ts": row["oldest"],
         "newest_ts": row["newest"],
         "disk_bytes": total_bytes,
-        "clips_dir": str(clips_dir),
+        "clips_dir": str(settings.clips_dir),
         "max_age_days": settings.clip_max_age_days,
+        "per_camera": per_camera,
     }
 
 
