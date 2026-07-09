@@ -67,7 +67,9 @@ class InferenceWorker:
     def _load_model(self, weights: str = "yolov8n.pt"):
         from ultralytics import YOLO
         model_path = settings.model_dir / weights
-        target = str(model_path) if model_path.exists() else weights
+        # Always pass the full path; ultralytics will download here if missing,
+        # keeping the file in the mounted /models volume across restarts.
+        target = str(model_path)
         logger.info("loading YOLO model %s on device %s", target, self.device)
         model = YOLO(target)
         try:
