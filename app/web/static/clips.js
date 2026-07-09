@@ -146,7 +146,7 @@
     video.style.cssText = 'max-width:100%;max-height:480px;display:block;margin:0 auto;';
     video.src = `/api/clips/${clipId}/video.mp4`;
     video.onerror = () => {
-      td.innerHTML = '<span class="status-bad" style="padding:0.5rem;display:block">Could not load clip — file may be missing from disk.</span>';
+      td.innerHTML = '<span class="status-bad" style="padding:0.5rem;display:block">Could not play clip — unsupported codec or file missing.</span>';
     };
     td.appendChild(video);
     videoRow.appendChild(td);
