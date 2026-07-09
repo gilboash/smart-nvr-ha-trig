@@ -59,6 +59,10 @@ class Camera(BaseModel):
         )
 
 
+class ZonePatch(BaseModel):
+    state_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+
+
 class ZoneIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     polygon: list[tuple[float, float]] = Field(min_length=3)

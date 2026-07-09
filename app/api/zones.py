@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter, HTTPException, Request
 
 from app.db import get_conn, tx
-from app.models import Zone, ZoneIn, now_ts
+from app.models import Zone, ZoneIn, ZonePatch, now_ts
 
 router = APIRouter(tags=["zones"])
 
@@ -71,6 +71,19 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
     _reconcile(request)
     row = get_conn().execute("SELECT * FROM zones WHERE id = ?", (zone_id,)).fetchone()
     return Zone.from_row(row)
+
+
+@router.patch("/zones/{zone_id}")
+async def patch_zone(zone_id: int, body: ZonePatch) -> Zone:
+    row = get_conn().execute("SELECT id FROM zones WHERE id = ?", (zone_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "zone not found")
+    data = body.model_dump(exclude_unset=True)
+    if data:
+        fields = [f"{k} = ?" for k in data]
+        with tx() as conn:
+            conn.execute(f"UPDATE zones SET {', '.join(fields)} WHERE id = ?", [*data.values(), zone_id])
+    return Zone.from_row(get_conn().execute("SELECT * FROM zones WHERE id = ?", (zone_id,)).fetchone())
 
 
 @router.delete("/zones/{zone_id}", status_code=204)
