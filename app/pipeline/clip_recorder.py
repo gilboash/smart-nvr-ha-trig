@@ -90,10 +90,8 @@ class ClipRecorder(EventPublisher):
     # ── EventPublisher interface ───────────────────────────────────────────────
 
     async def publish(self, event: EpisodeEvent) -> None:
-        # Only detection ENTER events
+        # Only detection ENTER events (state zone events are excluded)
         if event.kind != "ENTER" or event.class_name.startswith("state:"):
-            return
-        if event.zone_id is None:
             return
 
         with self._active_lock:
