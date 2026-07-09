@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}naco-real-smart-nvr{% endblock %}</title>
   <link rel="stylesheet" href="/static/app.css?v={{ version }}">
 </head>
@@ -14,19 +15,22 @@
       <a href="/clips">Clips</a>
       <a href="/settings">Settings</a>
     </nav>
-    <div class="statsbar" id="statsbar">
-      <span id="stat-cpu">CPU —</span>
-      <span id="stat-ram">RAM —</span>
-      <span id="stat-gpu"></span>
-      <span id="stat-device"></span>
-      <span id="stat-infer"></span>
-    </div>
     {% if username %}
     <form method="post" action="/api/auth/logout" class="logout-form">
       <button type="submit" class="logout-btn">{{ username }} · logout</button>
     </form>
     {% endif %}
   </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="statusbar">
+    <span id="stat-cpu">CPU —</span>
+    <span id="stat-ram">RAM —</span>
+    <span id="stat-gpu"></span>
+    <span id="stat-device"></span>
+    <span id="stat-infer"></span>
+  </footer>
   <script>
     (function () {
       async function poll() {
@@ -59,8 +63,5 @@
       setInterval(poll, 5000);
     })();
   </script>
-  <main>
-    {% block content %}{% endblock %}
-  </main>
 </body>
 </html>
