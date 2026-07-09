@@ -32,30 +32,7 @@ async def list_clips(camera_id: int | None = None, limit: int = 50, offset: int 
     return [dict(r) for r in rows]
 
 
-@router.get("/{clip_id}/video.mp4")
-async def get_clip_video(clip_id: int):
-    row = get_conn().execute("SELECT path FROM clips WHERE id = ?", (clip_id,)).fetchone()
-    if row is None:
-        raise HTTPException(404, "clip not found")
-    path = Path(row["path"])
-    if not path.exists():
-        raise HTTPException(404, "clip file missing from disk")
-    return FileResponse(str(path), media_type="video/mp4", filename=path.name)
-
-
-@router.delete("/{clip_id}", status_code=204)
-async def delete_clip(clip_id: int):
-    row = get_conn().execute("SELECT path FROM clips WHERE id = ?", (clip_id,)).fetchone()
-    if row is None:
-        raise HTTPException(404, "clip not found")
-    with tx() as conn:
-        conn.execute("DELETE FROM clips WHERE id = ?", (clip_id,))
-    try:
-        os.remove(row["path"])
-    except OSError:
-        pass
-
-
+# Literal routes must come before parameterized ones
 @router.get("/stats")
 async def clip_stats() -> dict:
     row = get_conn().execute(
@@ -90,3 +67,27 @@ async def run_cleanup(request: Request) -> dict:
         raise HTTPException(503, "clip recorder not available")
     removed = cr.cleanup_old()
     return {"removed": removed}
+
+
+@router.get("/{clip_id}/video.mp4")
+async def get_clip_video(clip_id: int):
+    row = get_conn().execute("SELECT path FROM clips WHERE id = ?", (clip_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "clip not found")
+    path = Path(row["path"])
+    if not path.exists():
+        raise HTTPException(404, "clip file missing from disk")
+    return FileResponse(str(path), media_type="video/mp4", filename=path.name)
+
+
+@router.delete("/{clip_id}", status_code=204)
+async def delete_clip(clip_id: int):
+    row = get_conn().execute("SELECT path FROM clips WHERE id = ?", (clip_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "clip not found")
+    with tx() as conn:
+        conn.execute("DELETE FROM clips WHERE id = ?", (clip_id,))
+    try:
+        os.remove(row["path"])
+    except OSError:
+        pass

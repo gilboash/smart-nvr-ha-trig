@@ -138,12 +138,17 @@
     videoRow.className = 'video-row';
     const td = document.createElement('td');
     td.colSpan = 6;
-    td.innerHTML = `
-      <video controls autoplay style="max-width:100%;max-height:480px;display:block;margin:0.5rem auto;">
-        <source src="/api/clips/${clipId}/video.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-      </video>
-    `;
+    td.style.padding = '0.5rem';
+
+    const video = document.createElement('video');
+    video.controls = true;
+    video.autoplay = true;
+    video.style.cssText = 'max-width:100%;max-height:480px;display:block;margin:0 auto;';
+    video.src = `/api/clips/${clipId}/video.mp4`;
+    video.onerror = () => {
+      td.innerHTML = '<span class="status-bad" style="padding:0.5rem;display:block">Could not load clip — file may be missing from disk.</span>';
+    };
+    td.appendChild(video);
     videoRow.appendChild(td);
     tr.after(videoRow);
     activeVideoRow = videoRow;

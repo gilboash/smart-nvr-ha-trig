@@ -19,6 +19,7 @@ services:
       SNVR_PORT: "7070"
       SNVR_DB_PATH: /data/snvr.db
       SNVR_SNAPSHOT_DIR: /data/snapshots
+      SNVR_CLIPS_DIR: /data/clips
       SNVR_MODEL_DIR: /models
       SNVR_LOG_LEVEL: INFO
       SNVR_DEVICE: "${SNVR_DEVICE:-cuda:0}"
