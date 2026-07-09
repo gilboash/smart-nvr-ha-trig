@@ -94,8 +94,8 @@
         const threshCell = z.zone_type === 'state'
           ? `<input class="threshold-input" type="number" step="0.05" min="0" max="1"
                value="${z.state_threshold ?? 0.6}" data-zone-id="${z.id}"
-               style="width:4.5rem" title="Min confidence — below this reports unknown">`
-          : '—';
+               style="width:4.5rem" title="Min confidence - below this reports unknown">`
+          : 'n/a';
         tr.innerHTML = `
           <td>${z.id}</td>
           <td>${escapeHtml(z.name)}</td>
