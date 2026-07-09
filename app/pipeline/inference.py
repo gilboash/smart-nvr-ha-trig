@@ -381,10 +381,27 @@ class InferenceWorker:
             except Exception:
                 logger.exception("sweep error")
 
-            # Watchdog: restart if thread died unexpectedly
-            if self._thread is not None and not self._thread.is_alive():
-                logger.error("inference thread died unexpectedly")
-                self._restart_inference()
+            # Watchdog: restart if thread died OR is hung (alive but not processing frames)
+            if self._thread is not None:
+                if not self._thread.is_alive():
+                    logger.error("inference thread died unexpectedly")
+                    self._restart_inference()
+                elif self._last_frame_ts > 0:
+                    age = time.time() - self._last_frame_ts
+                    if age > 30.0:
+                        logger.error(
+                            "inference thread hung (%.0fs since last frame) — abandoning and restarting",
+                            age,
+                        )
+                        # Clear CUDA context before spawning new thread
+                        if self.device.startswith("cuda"):
+                            try:
+                                import torch as _torch
+                                _torch.cuda.empty_cache()
+                            except Exception:
+                                pass
+                        self._thread = None   # abandon the hung thread (daemon, dies with process)
+                        self._restart_inference()
 
             # Periodic CUDA cache clear to prevent memory fragmentation stalls
             if self.device.startswith("cuda") and time.time() - _cuda_clear_ts > 300:
