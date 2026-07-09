@@ -52,7 +52,7 @@
       <div class="card">
         <h2>Zones</h2>
         <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Current state</th><th>Min conf.</th><th>Vertices</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Current state</th><th>MQTT threshold</th><th>Vertices</th><th></th></tr></thead>
           <tbody id="zones-body"></tbody>
         </table>
       </div>
@@ -94,7 +94,7 @@
         const threshCell = z.zone_type === 'state'
           ? `<input class="threshold-input" type="number" step="0.05" min="0" max="1"
                value="${z.state_threshold ?? 0.6}" data-zone-id="${z.id}"
-               style="width:4.5rem" title="Min confidence - below this reports unknown">`
+               style="width:4.5rem" title="Min confidence to report to MQTT/HA - below this reports unknown">`
           : 'n/a';
         tr.innerHTML = `
           <td>${z.id}</td>

@@ -49,7 +49,7 @@ window.ZoneEditor = (function () {
               <input class="state-label2-input" placeholder="open" style="width:100%;box-sizing:border-box">
             </div>
             <div>
-              <label style="font-weight:600;display:block;margin-bottom:0.2rem" title="If best match is below this, reports UNKNOWN instead">Min confidence (0–1)</label>
+              <label style="font-weight:600;display:block;margin-bottom:0.2rem" title="If best match is below this, reports unknown to MQTT/HA instead">MQTT threshold (0–1)</label>
               <input class="state-threshold-input" type="number" step="0.05" min="0" max="1" value="0.6" style="width:100%;box-sizing:border-box">
             </div>
           </div>
