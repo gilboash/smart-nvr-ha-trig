@@ -59,6 +59,16 @@ class ClipRecorder(EventPublisher):
 
     # ── frame feed (called from InferenceWorker at inference rate) ────────────
 
+    def extend_if_active(self, camera_id: int) -> None:
+        """Extend the active clip deadline while detections are still present."""
+        with self._active_lock:
+            ac = self._active.get(camera_id)
+        if ac is not None:
+            new_deadline = time.time() + self._post_s
+            with ac.lock:
+                if new_deadline > ac.deadline:
+                    ac.deadline = new_deadline
+
     def push_frame(self, camera_id: int, bgr: np.ndarray, ts: float) -> None:
         # Throttle to ~1fps
         if ts - self._last_push_ts.get(camera_id, 0.0) < 0.9:

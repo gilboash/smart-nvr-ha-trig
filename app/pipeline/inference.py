@@ -283,6 +283,10 @@ class InferenceWorker:
             self._latest_detections[camera_id] = detections
             self._latest_detections_ts[camera_id] = time.time()
 
+        # Keep extending the active clip as long as detections are present
+        if detections and self._clip_recorder is not None:
+            self._clip_recorder.extend_if_active(camera_id)
+
         for ev in events:
             self._publish(ev)
 
