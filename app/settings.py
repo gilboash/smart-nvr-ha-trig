@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     clip_pre_s: int = 30           # seconds of pre-trigger footage
     clip_post_s: int = 30          # seconds of post-trigger footage
     clip_max_age_days: int = 30    # delete clips older than N days (0 = keep forever)
+    clip_max_s: int = 300          # hard cap on clip length in seconds (0 = no cap)
 
     # MQTT / Home Assistant integration (leave mqtt_host blank to disable)
     mqtt_host: str = ""

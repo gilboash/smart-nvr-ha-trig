@@ -50,6 +50,7 @@ class ClipRecorder(EventPublisher):
         self._pre_s = settings.clip_pre_s
         self._post_s = settings.clip_post_s
         self._max_age_days = settings.clip_max_age_days
+        self._max_clip_s = settings.clip_max_s  # 0 means no cap
         # Per-camera rolling 1fps pre-buffer (JPEG-compressed to save memory)
         self._pre_buffer: dict[int, deque] = {}
         self._last_push_ts: dict[int, float] = {}
@@ -68,6 +69,11 @@ class ClipRecorder(EventPublisher):
         if ac is not None:
             new_deadline = time.time() + self._post_s
             with ac.lock:
+                if self._max_clip_s > 0:
+                    hard_limit = ac.started_at + self._max_clip_s
+                    if time.time() >= hard_limit:
+                        return  # watchdog will finalize; don't extend past cap
+                    new_deadline = min(new_deadline, hard_limit)
                 if new_deadline > ac.deadline:
                     ac.deadline = new_deadline
 
@@ -194,6 +200,12 @@ class ClipRecorder(EventPublisher):
                 logger.warning("failed to write thumbnail %s", thumb_path)
 
         duration_s = frames[-1][0] - frames[0][0] if len(frames) > 1 else 0.0
+        if self._max_clip_s > 0 and duration_s >= self._max_clip_s - 1:
+            logger.info(
+                "clip capped at max duration (%ds) for camera %d — "
+                "subject was present longer; a new clip will start on next detection",
+                self._max_clip_s, ac.camera_id,
+            )
         self._save_to_db(ac, out_path, len(frames), duration_s)
         logger.info("clip saved: %s (%d frames, %.0fs)", out_path.name, len(frames), duration_s)
 
@@ -208,6 +220,9 @@ class ClipRecorder(EventPublisher):
             tmp_path = Path(tmp)
             for i, (_, jpeg) in enumerate(frames):
                 (tmp_path / f"frame_{i:06d}.jpg").write_bytes(jpeg)
+            n_frames = len(frames)
+            # Budget ~1 second per frame for encoding, minimum 60s
+            encode_timeout = max(60, n_frames * 2)
             subprocess.run(
                 [
                     "ffmpeg", "-y",
@@ -219,6 +234,7 @@ class ClipRecorder(EventPublisher):
                 ],
                 check=True,
                 capture_output=True,
+                timeout=encode_timeout,
             )
 
     def _write_cv2(self, frames: list, out_path: Path) -> None:
