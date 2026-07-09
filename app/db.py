@@ -115,6 +115,11 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX IF NOT EXISTS idx_samples_zone ON zone_samples(zone_id);
     """,
+    # v6 — confidence thresholds
+    """
+    ALTER TABLE cameras ADD COLUMN detection_threshold REAL NOT NULL DEFAULT 0.5;
+    ALTER TABLE zones ADD COLUMN state_threshold REAL NOT NULL DEFAULT 0.6;
+    """,
 ]
 
 

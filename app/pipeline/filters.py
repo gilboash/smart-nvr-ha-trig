@@ -23,11 +23,13 @@ class ZoneShape:
     zone_type: str = "detection"
     state_labels: Optional[list[str]] = None
     state_question: Optional[str] = None
+    state_threshold: float = 0.6       # min confidence; below this → "unknown"
 
 
 def load_zones(camera_id: int) -> list[ZoneShape]:
     rows = get_conn().execute(
-        "SELECT id, name, polygon_json, zone_type, state_labels_json, state_question FROM zones WHERE camera_id = ?",
+        "SELECT id, name, polygon_json, zone_type, state_labels_json, state_question, state_threshold "
+        "FROM zones WHERE camera_id = ?",
         (camera_id,),
     ).fetchall()
     shapes: list[ZoneShape] = []
@@ -42,6 +44,7 @@ def load_zones(camera_id: int) -> list[ZoneShape]:
             polygon=Polygon(pts), points=pts,
             zone_type=zone_type, state_labels=state_labels,
             state_question=r["state_question"] or None,
+            state_threshold=r["state_threshold"] if r["state_threshold"] is not None else 0.6,
         ))
     return shapes
 

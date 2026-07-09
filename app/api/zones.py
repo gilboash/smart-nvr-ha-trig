@@ -50,8 +50,9 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
         cur = conn.execute(
             """
             INSERT INTO zones (camera_id, name, polygon_json, snapshot_w, snapshot_h,
-                               zone_type, state_labels_json, state_question, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               zone_type, state_labels_json, state_question,
+                               state_threshold, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 camera_id,
@@ -62,6 +63,7 @@ async def create_zone(camera_id: int, body: ZoneIn, request: Request) -> Zone:
                 body.zone_type,
                 json.dumps(body.state_labels) if body.state_labels else None,
                 body.state_question or None,
+                body.state_threshold,
                 now_ts(),
             ),
         )

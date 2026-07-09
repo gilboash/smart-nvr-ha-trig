@@ -15,6 +15,7 @@ class CameraIn(BaseModel):
     model: str = "yolov8n.pt"
     classes: list[str] = ["person"]
     hysteresis_s: float = Field(default=5.0, ge=0.5, le=120.0)
+    detection_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class CameraPatch(BaseModel):
@@ -25,6 +26,7 @@ class CameraPatch(BaseModel):
     model: Optional[str] = None
     classes: Optional[list[str]] = None
     hysteresis_s: Optional[float] = Field(default=None, ge=0.5, le=120.0)
+    detection_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 class Camera(BaseModel):
@@ -36,6 +38,7 @@ class Camera(BaseModel):
     model: str
     classes: list[str]
     hysteresis_s: float
+    detection_threshold: float
     created_at: float
     updated_at: float
 
@@ -50,6 +53,7 @@ class Camera(BaseModel):
             model=row["model"],
             classes=json.loads(row["classes_json"]),
             hysteresis_s=row["hysteresis_s"],
+            detection_threshold=row["detection_threshold"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -61,8 +65,9 @@ class ZoneIn(BaseModel):
     snapshot_w: int = Field(gt=0)
     snapshot_h: int = Field(gt=0)
     zone_type: str = "detection"  # "detection" | "state"
-    state_labels: Optional[list[str]] = None   # [yes_label, no_label] for state zones
-    state_question: Optional[str] = None        # VQA yes/no question for state zones
+    state_labels: Optional[list[str]] = None
+    state_question: Optional[str] = None
+    state_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
 
     @field_validator("polygon")
     @classmethod
@@ -83,6 +88,7 @@ class Zone(BaseModel):
     zone_type: str
     state_labels: Optional[list[str]]
     state_question: Optional[str]
+    state_threshold: float
     created_at: float
 
     @classmethod
@@ -98,6 +104,7 @@ class Zone(BaseModel):
             zone_type=raw.get("zone_type", "detection") or "detection",
             state_labels=json.loads(raw["state_labels_json"]) if raw.get("state_labels_json") else None,
             state_question=raw.get("state_question") or None,
+            state_threshold=raw.get("state_threshold") or 0.6,
             created_at=raw["created_at"],
         )
 

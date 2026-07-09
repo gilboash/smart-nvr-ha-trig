@@ -32,8 +32,9 @@ async def create_camera(body: CameraIn, request: Request) -> Camera:
             cur = conn.execute(
                 """
                 INSERT INTO cameras (name, rtsp_url, enabled, target_fps, model,
-                                     classes_json, hysteresis_s, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     classes_json, hysteresis_s, detection_threshold,
+                                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     body.name,
@@ -43,6 +44,7 @@ async def create_camera(body: CameraIn, request: Request) -> Camera:
                     body.model,
                     json.dumps(body.classes),
                     body.hysteresis_s,
+                    body.detection_threshold,
                     ts,
                     ts,
                 ),

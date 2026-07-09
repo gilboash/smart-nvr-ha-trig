@@ -35,6 +35,7 @@
             <div><label>Model</label><input name="model" value="${escapeHtml(camera.model)}"></div>
             <div><label>Detection classes</label><div id="edit-classes-picker"></div></div>
             <div><label>Hysteresis (s)</label><input name="hysteresis_s" type="number" step="0.5" min="0.5" max="120" value="${camera.hysteresis_s}"></div>
+            <div><label>Detection threshold</label><input name="detection_threshold" type="number" step="0.05" min="0" max="1" value="${camera.detection_threshold}" title="Minimum YOLO confidence to trigger an event (0–1)"></div>
           </div>
           <button class="primary" type="submit">Save</button>
           <button class="probe" type="button">Probe RTSP</button>
@@ -303,6 +304,7 @@
       model: fd.get('model'),
       classes,
       hysteresis_s: Number(fd.get('hysteresis_s')),
+      detection_threshold: Number(fd.get('detection_threshold')),
     };
     const res = await fetch('/api/cameras/' + cameraId, {
       method: 'PATCH',

@@ -39,7 +39,7 @@ window.ZoneEditor = (function () {
           </div>
         </div>
         <div class="state-labels-row" style="display:none;grid-column:1/-1">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem">
             <div>
               <label style="font-weight:600;display:block;margin-bottom:0.2rem">State 1 label</label>
               <input class="state-label1-input" placeholder="closed" style="width:100%;box-sizing:border-box">
@@ -47,6 +47,10 @@ window.ZoneEditor = (function () {
             <div>
               <label style="font-weight:600;display:block;margin-bottom:0.2rem">State 2 label</label>
               <input class="state-label2-input" placeholder="open" style="width:100%;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-weight:600;display:block;margin-bottom:0.2rem" title="If best match is below this, reports UNKNOWN instead">Min confidence (0–1)</label>
+              <input class="state-threshold-input" type="number" step="0.05" min="0" max="1" value="0.6" style="width:100%;box-sizing:border-box">
             </div>
           </div>
           <p style="color:var(--muted);font-size:0.82rem;margin:0.4rem 0 0">After saving, use the Train button on the camera page to capture examples for each state.</p>
@@ -212,14 +216,16 @@ window.ZoneEditor = (function () {
       const poly = this.polys[this.polys.length - 1];
       const zone_type = this.top.querySelector('input[name="zone-type"]:checked').value;
       let state_labels = null;
+      let state_threshold = 0.6;
       if (zone_type === 'state') {
         const l1 = this.top.querySelector('.state-label1-input').value.trim();
         const l2 = this.top.querySelector('.state-label2-input').value.trim();
         if (!l1 || !l2) { alert('Enter both state labels (e.g. "closed" and "open").'); return; }
         state_labels = [l1, l2];
+        state_threshold = Number(this.top.querySelector('.state-threshold-input').value) || 0.6;
       }
       if (this._saveCb) {
-        this._saveCb({ name, polygon: poly, snapshot_w: this.natW, snapshot_h: this.natH, zone_type, state_labels });
+        this._saveCb({ name, polygon: poly, snapshot_w: this.natW, snapshot_h: this.natH, zone_type, state_labels, state_threshold });
       }
     }
 

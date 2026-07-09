@@ -44,6 +44,7 @@ class InferenceWorker:
         self._camera_configs: dict[int, CameraConfig] = {}
         self._camera_classes: dict[int, set[str]] = {}
         self._camera_hysteresis: dict[int, float] = {}
+        self._camera_det_threshold: dict[int, float] = {}
         self._zone_cache: dict[int, list] = {}
         self._zone_cache_ts: dict[int, float] = {}
         self._latest_detections: dict[int, list[Detection]] = {}
@@ -149,9 +150,12 @@ class InferenceWorker:
         self._camera_configs = dict(configs)
         from app.db import get_conn
         import json as _json
-        rows = get_conn().execute("SELECT id, classes_json, hysteresis_s FROM cameras").fetchall()
+        rows = get_conn().execute(
+            "SELECT id, classes_json, hysteresis_s, detection_threshold FROM cameras"
+        ).fetchall()
         self._camera_classes = {r["id"]: set(_json.loads(r["classes_json"])) for r in rows}
         self._camera_hysteresis = {r["id"]: r["hysteresis_s"] for r in rows}
+        self._camera_det_threshold = {r["id"]: r["detection_threshold"] for r in rows}
         self._zone_cache.clear()
         self._zone_cache_ts.clear()
         with self._embeddings_lock:
@@ -228,9 +232,12 @@ class InferenceWorker:
         confs = boxes.conf.cpu().numpy() if hasattr(boxes.conf, "cpu") else boxes.conf
         cls_ids = boxes.cls.cpu().numpy().astype(int) if hasattr(boxes.cls, "cpu") else boxes.cls
 
+        threshold = self._camera_det_threshold.get(camera_id, 0.5)
         for box, conf, cid in zip(xyxy, confs, cls_ids):
             name = self._model_class_names.get(int(cid), str(int(cid)))
             if name not in allowed:
+                continue
+            if float(conf) < threshold:
                 continue
             x1, y1, x2, y2 = float(box[0]), float(box[1]), float(box[2]), float(box[3])
             zone_id = match_zone((x1, y1, x2, y2), w, h, detection_zones)
@@ -297,13 +304,18 @@ class InferenceWorker:
             with self._state_lock:
                 self._state_latest[zone.zone_id] = (label, prob, ranked)
 
+            # Apply confidence threshold: emit "unknown" when below zone's threshold
+            event_label = label if prob >= zone.state_threshold else "unknown"
             prev_label = self._state_last_label.get(zone.zone_id)
-            if label == prev_label:
+            if event_label == prev_label:
                 continue
 
-            self._state_last_label[zone.zone_id] = label
-            logger.info("few-shot zone %d (%s): %s → %s (%.0f%%)",
-                        zone.zone_id, zone.name, prev_label or "?", label, prob * 100)
+            self._state_last_label[zone.zone_id] = event_label
+            logger.info(
+                "few-shot zone %d (%s): %s → %s (%.0f%%%s)",
+                zone.zone_id, zone.name, prev_label or "?", event_label, prob * 100,
+                f", below threshold {zone.state_threshold:.0%}" if event_label == "unknown" else "",
+            )
 
             frame_copy = copy.copy(frame.bgr)
             def _saver(ep_id: int, _bgr=frame_copy):
@@ -311,7 +323,7 @@ class InferenceWorker:
 
             event, _ = self.aggregator.observe(
                 camera_id=frame.camera_id,
-                class_name=f"state:{label}",
+                class_name=f"state:{event_label}",
                 zone_id=zone.zone_id,
                 confidence=prob,
                 ts=now,
