@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Request
 
 import psutil
@@ -31,8 +33,16 @@ async def get_stats(request: Request) -> dict:
         pass
 
     manager = getattr(request.app.state, "manager", None)
-    device = getattr(manager, "_inference", None)
-    device_str = device.device if device is not None else "unknown"
+    inference = getattr(manager, "_inference", None)
+    device_str = inference.device if inference is not None else "unknown"
+
+    inference_age = None
+    inference_ok = None
+    if inference is not None:
+        last_ts = getattr(inference, "_last_frame_ts", 0.0)
+        if last_ts > 0:
+            inference_age = round(time.time() - last_ts, 1)
+            inference_ok = inference_age < 30.0
 
     return {
         "cpu_pct": cpu_pct,
@@ -41,6 +51,8 @@ async def get_stats(request: Request) -> dict:
         "ram_pct": mem.percent,
         "gpu": gpu,
         "device": device_str,
+        "inference_age_s": inference_age,
+        "inference_ok": inference_ok,
     }
 
 

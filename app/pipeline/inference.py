@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+import sys
 import threading
 import time
 from typing import Optional
@@ -65,6 +66,8 @@ class InferenceWorker:
         self._model_class_names: dict[int, str] = {}
         self._few_shot: Optional[FewShotClassifier] = None
         self._clip_recorder = None
+        self._last_frame_ts: float = 0.0   # updated each time _run() processes a frame
+        self._frames_processed: int = 0
 
     def _load_model(self, weights: str = "yolov8n.pt"):
         from ultralytics import YOLO
@@ -193,12 +196,18 @@ class InferenceWorker:
             frame = self.bus.take(timeout=0.5)
             if frame is None:
                 continue
+            self._last_frame_ts = time.time()
+            self._frames_processed += 1
+            if self._frames_processed % 500 == 0:
+                logger.debug("inference heartbeat: %d frames processed", self._frames_processed)
             try:
                 if self._clip_recorder is not None:
                     self._clip_recorder.push_frame(frame.camera_id, frame.bgr, frame.ts)
                 self._process_detection(frame)
                 self._process_state(frame)
-            except Exception:
+            except BaseException as exc:
+                if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                    break
                 logger.exception("inference error on camera %d", frame.camera_id)
 
     def _process_detection(self, frame: Frame) -> None:
@@ -338,7 +347,22 @@ class InferenceWorker:
             if event is not None:
                 self._publish(event)
 
+    def _restart_inference(self) -> None:
+        """Restart a dead inference thread. Called from sweep loop."""
+        logger.warning("restarting inference thread")
+        self._thread = None
+        try:
+            self._load_model()
+        except Exception:
+            logger.exception("model reload failed during restart")
+            return
+        self._last_frame_ts = time.time()
+        self._thread = threading.Thread(target=self._run, name="inference", daemon=True)
+        self._thread.start()
+        logger.info("inference thread restarted")
+
     def _sweep_loop(self) -> None:
+        _cuda_clear_ts = time.time()
         while not self._stop.is_set():
             self._stop.wait(1.0)
             if self._stop.is_set():
@@ -352,6 +376,21 @@ class InferenceWorker:
                     self._publish(ev)
             except Exception:
                 logger.exception("sweep error")
+
+            # Watchdog: restart if thread died unexpectedly
+            if self._thread is not None and not self._thread.is_alive():
+                logger.error("inference thread died unexpectedly")
+                self._restart_inference()
+
+            # Periodic CUDA cache clear to prevent memory fragmentation stalls
+            if self.device.startswith("cuda") and time.time() - _cuda_clear_ts > 300:
+                _cuda_clear_ts = time.time()
+                try:
+                    import torch as _torch
+                    _torch.cuda.empty_cache()
+                    logger.debug("CUDA cache cleared")
+                except Exception:
+                    pass
 
     def _publish(self, event) -> None:
         if self._loop is None:

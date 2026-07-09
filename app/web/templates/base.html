@@ -19,6 +19,7 @@
       <span id="stat-ram">RAM —</span>
       <span id="stat-gpu"></span>
       <span id="stat-device"></span>
+      <span id="stat-infer"></span>
     </div>
     {% if username %}
     <form method="post" action="/api/auth/logout" class="logout-form">
@@ -41,6 +42,17 @@
               s.gpu.name + ' VRAM ' + s.gpu.vram_used_mb + ' / ' + s.gpu.vram_total_mb + ' MB';
           }
           document.getElementById('stat-device').textContent = 'device: ' + (s.device || '—');
+          const infer = document.getElementById('stat-infer');
+          if (s.inference_ok === true) {
+            infer.textContent = 'infer ✓';
+            infer.style.color = '#7ee2b8';
+          } else if (s.inference_ok === false) {
+            infer.textContent = 'infer STALLED (' + s.inference_age_s + 's)';
+            infer.style.color = '#e27e7e';
+          } else {
+            infer.textContent = 'infer …';
+            infer.style.color = '';
+          }
         } catch (_) {}
       }
       poll();
