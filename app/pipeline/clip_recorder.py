@@ -112,6 +112,10 @@ class ClipRecorder(EventPublisher):
                 "SELECT clip_enabled FROM zones WHERE id = ?", (event.zone_id,)
             ).fetchone()
             if row is not None and not row["clip_enabled"]:
+                logger.info(
+                    "clip skipped for camera %d zone %d: clip recording disabled for this zone",
+                    event.camera_id, event.zone_id,
+                )
                 return
 
         with self._active_lock:
@@ -165,7 +169,11 @@ class ClipRecorder(EventPublisher):
         with ac.lock:
             frames = list(ac.frames)
         if not frames:
-            logger.warning("clip for camera %d has no frames, skipping", ac.camera_id)
+            logger.warning(
+                "clip for camera %d episode %d has no frames — push_frame may not be "
+                "reaching this camera; check inference is processing its stream",
+                ac.camera_id, ac.episode_id,
+            )
             return
 
         ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime(ac.started_at))

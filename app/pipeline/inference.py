@@ -214,7 +214,18 @@ class InferenceWorker:
         camera_id = frame.camera_id
         allowed = self._camera_classes.get(camera_id, set())
         if not allowed:
-            return
+            # Camera may have been added after startup — lazy-load from DB
+            from app.db import get_conn as _gc
+            import json as _json
+            _row = _gc().execute(
+                "SELECT classes_json FROM cameras WHERE id = ?", (camera_id,)
+            ).fetchone()
+            if _row:
+                allowed = set(_json.loads(_row["classes_json"]))
+                self._camera_classes[camera_id] = allowed
+                logger.info("lazy-loaded classes for camera %d: %s", camera_id, allowed)
+            if not allowed:
+                return
         class_ids = self._class_ids_for(allowed)
         if not class_ids:
             return
@@ -257,6 +268,7 @@ class InferenceWorker:
             x1, y1, x2, y2 = float(box[0]), float(box[1]), float(box[2]), float(box[3])
             zone_id = match_zone((x1, y1, x2, y2), w, h, detection_zones)
             if detection_zones and zone_id is None:
+                # Detection is outside all defined zones — visible in overlay but no event/clip
                 detections.append(Detection(
                     class_name=name, confidence=float(conf),
                     bbox_xyxy=(int(x1), int(y1), int(x2), int(y2)), zone_id=None,
