@@ -3,10 +3,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from app.db import get_conn, tx
+from app.settings import settings
 
 router = APIRouter(prefix="/clips", tags=["clips"])
 
@@ -53,3 +54,39 @@ async def delete_clip(clip_id: int):
         os.remove(row["path"])
     except OSError:
         pass
+
+
+@router.get("/stats")
+async def clip_stats() -> dict:
+    row = get_conn().execute(
+        "SELECT COUNT(*) AS cnt, MIN(created_at) AS oldest, MAX(created_at) AS newest FROM clips"
+    ).fetchone()
+    total_bytes = 0
+    clips_dir = settings.clips_dir
+    if clips_dir.is_dir():
+        for f in clips_dir.iterdir():
+            if f.is_file():
+                try:
+                    total_bytes += f.stat().st_size
+                except OSError:
+                    pass
+    return {
+        "count": row["cnt"] or 0,
+        "oldest_ts": row["oldest"],
+        "newest_ts": row["newest"],
+        "disk_bytes": total_bytes,
+        "clips_dir": str(clips_dir),
+        "max_age_days": settings.clip_max_age_days,
+    }
+
+
+@router.post("/cleanup")
+async def run_cleanup(request: Request) -> dict:
+    manager = getattr(request.app.state, "manager", None)
+    if manager is None:
+        raise HTTPException(503, "pipeline not ready")
+    cr = getattr(manager, "clip_recorder", None)
+    if cr is None:
+        raise HTTPException(503, "clip recorder not available")
+    removed = cr.cleanup_old()
+    return {"removed": removed}

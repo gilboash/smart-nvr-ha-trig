@@ -4,6 +4,21 @@
 <h1>Settings</h1>
 
 <div class="card">
+  <h2>Clip storage</h2>
+  <div id="clip-stats" style="font-size:0.88rem;color:#8892a0;margin-bottom:1rem">Loading…</div>
+  <h3 style="margin-bottom:0.5rem">Retention settings <small style="font-weight:400;color:#4a5568">(saved to .env — restart to apply)</small></h3>
+  <div class="row">
+    <div><label>Pre-trigger buffer (s)</label><input form="env-form" name="SNVR_CLIP_PRE_S" type="number" min="0" max="300"></div>
+    <div><label>Post-trigger duration (s)</label><input form="env-form" name="SNVR_CLIP_POST_S" type="number" min="5" max="300"></div>
+    <div><label>Delete clips older than (days, 0 = keep forever)</label><input form="env-form" name="SNVR_CLIP_MAX_AGE_DAYS" type="number" min="0"></div>
+  </div>
+  <div style="margin-top:0.75rem;display:flex;gap:1rem;align-items:center">
+    <button id="cleanup-btn" type="button">Clean up now</button>
+    <span id="cleanup-status" style="font-size:0.88rem"></span>
+  </div>
+</div>
+
+<div class="card">
   <h2>Environment configuration</h2>
   <p style="color:var(--muted);font-size:0.88rem;margin-top:0">
     Changes are written to <code>.env</code>. Run <code>docker compose up -d</code> (no rebuild needed) to apply.

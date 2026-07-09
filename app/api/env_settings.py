@@ -16,6 +16,7 @@ _ALLOWED = {
     "SNVR_MQTT_DISCOVERY_PREFIX", "SNVR_MQTT_TOPIC_PREFIX",
     "SNVR_LOG_LEVEL", "SNVR_DEVICE", "SNVR_STATE_CHECK_INTERVAL",
     "SNVR_SESSION_SECRET", "SNVR_ADMIN_PASSWORD",
+    "SNVR_CLIP_PRE_S", "SNVR_CLIP_POST_S", "SNVR_CLIP_MAX_AGE_DAYS",
 }
 
 
@@ -38,6 +39,9 @@ async def get_env() -> dict:
         "SNVR_STATE_CHECK_INTERVAL": str(settings.state_check_interval),
         "SNVR_SESSION_SECRET": settings.session_secret,
         "SNVR_ADMIN_PASSWORD": settings.admin_password,
+        "SNVR_CLIP_PRE_S": str(settings.clip_pre_s),
+        "SNVR_CLIP_POST_S": str(settings.clip_post_s),
+        "SNVR_CLIP_MAX_AGE_DAYS": str(settings.clip_max_age_days),
     }
 
 

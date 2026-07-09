@@ -47,12 +47,15 @@ class ClipRecorder(EventPublisher):
         self._clips_dir = clips_dir
         self._pre_s = settings.clip_pre_s
         self._post_s = settings.clip_post_s
+        self._max_age_days = settings.clip_max_age_days
         # Per-camera rolling 1fps pre-buffer (JPEG-compressed to save memory)
         self._pre_buffer: dict[int, deque] = {}
         self._last_push_ts: dict[int, float] = {}
         # Per-camera active clip (at most one per camera)
         self._active: dict[int, _ActiveClip] = {}
         self._active_lock = threading.Lock()
+        # Background cleanup thread (daemon — stops with process)
+        threading.Thread(target=self._cleanup_loop, daemon=True, name="clip-cleanup").start()
 
     # ── frame feed (called from InferenceWorker at inference rate) ────────────
 
@@ -197,6 +200,38 @@ class ClipRecorder(EventPublisher):
                     out.write(bgr)
         finally:
             out.release()
+
+    def _cleanup_loop(self) -> None:
+        """Run cleanup once at startup then every 6 hours."""
+        while True:
+            try:
+                self.cleanup_old()
+            except Exception:
+                logger.exception("clip cleanup error")
+            time.sleep(6 * 3600)
+
+    def cleanup_old(self) -> int:
+        """Delete clips older than clip_max_age_days. Returns number of clips removed."""
+        if self._max_age_days <= 0:
+            return 0
+        from app.db import get_conn, tx
+        cutoff = time.time() - self._max_age_days * 86400
+        rows = get_conn().execute(
+            "SELECT id, path FROM clips WHERE created_at < ?", (cutoff,)
+        ).fetchall()
+        if not rows:
+            return 0
+        count = 0
+        for r in rows:
+            try:
+                os.remove(r["path"])
+            except OSError:
+                pass
+            with tx() as conn:
+                conn.execute("DELETE FROM clips WHERE id = ?", (r["id"],))
+            count += 1
+        logger.info("clip cleanup: removed %d clips older than %d days", count, self._max_age_days)
+        return count
 
     def _save_to_db(self, ac: _ActiveClip, path: Path, frame_count: int, duration_s: float) -> None:
         from app.db import get_conn, tx

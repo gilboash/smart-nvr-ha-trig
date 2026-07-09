@@ -30,8 +30,9 @@ class Settings(BaseSettings):
 
     # Clip recording around detection events
     clips_dir: Path = Path("./data/clips")
-    clip_pre_s: int = 30    # seconds of pre-trigger footage
-    clip_post_s: int = 30   # seconds of post-trigger footage
+    clip_pre_s: int = 30           # seconds of pre-trigger footage
+    clip_post_s: int = 30          # seconds of post-trigger footage
+    clip_max_age_days: int = 30    # delete clips older than N days (0 = keep forever)
 
     # MQTT / Home Assistant integration (leave mqtt_host blank to disable)
     mqtt_host: str = ""
