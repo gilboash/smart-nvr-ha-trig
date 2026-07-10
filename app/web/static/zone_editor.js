@@ -39,7 +39,7 @@ window.ZoneEditor = (function () {
           </div>
         </div>
         <div class="detection-only-row" style="grid-column:1/-1;padding-top:0.25rem">
-          <label style="cursor:pointer"><input type="checkbox" class="clip-enabled-input" checked> Record video clips on detection events</label>
+          <label style="cursor:pointer"><input type="checkbox" class="clip-enabled-input" checked> Show events on recordings timeline</label>
         </div>
         <div class="state-labels-row" style="display:none;grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem">

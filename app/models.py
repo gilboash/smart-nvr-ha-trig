@@ -11,7 +11,7 @@ class CameraIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     rtsp_url: str = Field(min_length=1)
     enabled: bool = True
-    target_fps: float = Field(default=5.0, ge=0.0, le=30.0)
+    target_fps: float = Field(default=1.0, ge=0.0, le=30.0)
     model: str = "yolov8n.pt"
     classes: list[str] = ["person"]
     hysteresis_s: float = Field(default=5.0, ge=0.5, le=120.0)

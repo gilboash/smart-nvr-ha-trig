@@ -65,7 +65,11 @@ async def timeline(camera_id: int | None = None, range_s: int = 86400) -> dict:
         seg_params,
     ).fetchall()
 
-    ev_clauses = ["e.start_ts >= ?", "e.class_name NOT LIKE 'state:%'"]
+    ev_clauses = [
+        "e.start_ts >= ?",
+        "e.class_name NOT LIKE 'state:%'",
+        "(e.zone_id IS NULL OR z.clip_enabled IS NULL OR z.clip_enabled = 1)",
+    ]
     ev_params: list = [start]
     if camera_id is not None:
         ev_clauses.append("e.camera_id = ?")

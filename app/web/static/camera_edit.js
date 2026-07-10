@@ -58,7 +58,7 @@
       <div class="card">
         <h2>Zones</h2>
         <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Current state</th><th>MQTT threshold</th><th>Clips</th><th>Vertices</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Current state</th><th>MQTT threshold</th><th>Timeline</th><th>Vertices</th><th></th></tr></thead>
           <tbody id="zones-body"></tbody>
         </table>
       </div>
@@ -104,7 +104,7 @@
           : 'n/a';
         const clipCell = z.zone_type === 'detection'
           ? `<input type="checkbox" class="clip-enabled-cb" data-zone-id="${z.id}"
-               title="Record a video clip when this zone triggers a detection event"
+               title="Show detection events from this zone as markers on the recordings timeline"
                ${z.clip_enabled ? 'checked' : ''}>`
           : 'n/a';
         tr.innerHTML = `
