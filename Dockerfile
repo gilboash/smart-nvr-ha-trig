@@ -25,6 +25,8 @@ ENV SNVR_HOST=0.0.0.0 \
     SNVR_PORT=7070 \
     SNVR_DB_PATH=/data/snvr.db \
     SNVR_SNAPSHOT_DIR=/data/snapshots \
+    SNVR_CLIPS_DIR=/data/clips \
+    SNVR_RECORDINGS_DIR=/data/recordings \
     SNVR_MODEL_DIR=/models \
     OPENCV_FFMPEG_CAPTURE_OPTIONS="rtsp_transport;tcp|stimeout;5000000"
 
