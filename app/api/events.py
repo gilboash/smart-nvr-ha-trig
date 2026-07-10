@@ -16,9 +16,10 @@ router = APIRouter(prefix="/events", tags=["events"])
 async def list_events(
     camera_id: Optional[int] = None,
     since: Optional[float] = None,
-    limit: int = 100,
+    before_ts: Optional[float] = None,
+    limit: int = 50,
 ) -> list[Episode]:
-    limit = max(1, min(int(limit), 500))
+    limit = max(1, min(int(limit), 200))
     where: list[str] = []
     args: list = []
     if camera_id is not None:
@@ -27,6 +28,9 @@ async def list_events(
     if since is not None:
         where.append("start_ts >= ?")
         args.append(since)
+    if before_ts is not None:
+        where.append("start_ts < ?")
+        args.append(before_ts)
     sql = "SELECT * FROM episodes"
     if where:
         sql += " WHERE " + " AND ".join(where)
