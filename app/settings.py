@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     device: str = "auto"
 
     preview_fps: float = 2.0
+    preview_max_width: int = 1280   # resize preview frames to this width (0 = no resize)
     frame_queue_max: int = 4
     state_check_interval: float = 10.0  # seconds between VQA queries per zone
 
