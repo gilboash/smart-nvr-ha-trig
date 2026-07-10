@@ -29,7 +29,8 @@ class EnvUpdate(BaseModel):
 @router.get("/env")
 async def get_env() -> dict:
     from app.settings import settings
-    return {
+    # Defaults from the in-memory settings object (set at startup)
+    defaults = {
         "SNVR_MQTT_HOST": settings.mqtt_host,
         "SNVR_MQTT_PORT": str(settings.mqtt_port),
         "SNVR_MQTT_USERNAME": settings.mqtt_username,
@@ -49,6 +50,10 @@ async def get_env() -> dict:
         "SNVR_RECORDING_SEGMENT_MIN": str(settings.recording_segment_min),
         "SNVR_RECORDING_MAX_AGE_DAYS": str(settings.recording_max_age_days),
     }
+    # Override with whatever is currently written in .env so saved values
+    # are reflected immediately without needing a container restart
+    defaults.update(_read_env())
+    return defaults
 
 
 @router.post("/env")
@@ -69,6 +74,22 @@ async def mqtt_reset(request: Request) -> dict:
         raise HTTPException(503, "MQTT not connected")
     pub.announce_all()
     return {"ok": True}
+
+
+def _read_env() -> dict[str, str]:
+    """Parse .env and return only the keys we allow, so the UI reflects saved values."""
+    if not ENV_FILE.exists():
+        return {}
+    result: dict[str, str] = {}
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        k, _, v = stripped.partition("=")
+        k = k.strip()
+        if k in _ALLOWED:
+            result[k] = v.strip()
+    return result
 
 
 def _write_env(updates: dict[str, str]) -> None:
