@@ -83,5 +83,11 @@ async def preview(camera_id: int, request: Request) -> Response:
             _cv2.rectangle(bgr, (cx - 2, cy - th - 6), (cx + tw + 4, cy), (200, 80, 220), -1)
             _cv2.putText(bgr, text, (cx, cy - 3), _cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1)
 
+    from app.settings import settings as _s
+    max_w = _s.preview_max_width
+    if max_w > 0 and w > max_w:
+        scale = max_w / w
+        bgr = _cv2.resize(bgr, (max_w, int(h * scale)), interpolation=_cv2.INTER_LINEAR)
+
     _, out = _cv2.imencode(".jpg", bgr, [_cv2.IMWRITE_JPEG_QUALITY, 75])
     return Response(content=out.tobytes(), media_type="image/jpeg", headers=_NO_CACHE)
