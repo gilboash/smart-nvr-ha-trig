@@ -2,14 +2,14 @@
   const root = document.getElementById('clips-app');
   const CAM_COLORS = ['#7ee2b8', '#e27e7e', '#7eb8e2', '#e2c97e', '#c97ee2', '#e2b87e', '#7ebfe2'];
   const CLASS_COLORS = {
-    person:     '#e27e7e',
-    car:        '#7eb8e2',
-    truck:      '#e2c97e',
-    bicycle:    '#c97ee2',
-    motorcycle: '#e2b87e',
-    bus:        '#7ee2b8',
-    dog:        '#a0e27e',
-    cat:        '#a0e27e',
+    person:     '#ff4444',
+    car:        '#44aaff',
+    truck:      '#ffcc00',
+    bicycle:    '#cc44ff',
+    motorcycle: '#ff8800',
+    bus:        '#00e5b0',
+    dog:        '#66ff44',
+    cat:        '#66ff44',
   };
 
   let timelineRange = 21600;

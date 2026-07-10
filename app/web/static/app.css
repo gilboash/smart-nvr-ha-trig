@@ -205,8 +205,10 @@ img.snapshot { display: block; max-width: 100%; height: auto; border-radius: 4px
 .tl-event-tick {
   position: absolute;
   width: 3px; height: 100%; top: 0;
-  opacity: 0.85;
+  opacity: 1;
   pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.55);
+  border-left: 1px solid rgba(255,255,255,0.35);
 }
 .tl-legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; font-size: 0.8rem; color: #9aa; }
 .tl-legend-item { display: flex; align-items: center; gap: 0.3rem; }
