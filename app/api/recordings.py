@@ -41,6 +41,49 @@ async def list_recordings(
     return [dict(r) for r in rows]
 
 
+@router.get("/stats")
+async def recording_stats() -> dict:
+    from pathlib import Path as _Path
+    from app.settings import settings as _s
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt, MIN(start_ts) AS oldest, MAX(start_ts) AS newest "
+        "FROM recordings WHERE end_ts IS NOT NULL"
+    ).fetchone()
+
+    seg_rows = conn.execute(
+        "SELECT r.camera_id, c.name AS camera_name, r.path "
+        "FROM recordings r JOIN cameras c ON c.id = r.camera_id "
+        "WHERE r.end_ts IS NOT NULL"
+    ).fetchall()
+
+    cam_stats: dict[int, dict] = {}
+    total_bytes = 0
+    for sr in seg_rows:
+        cid = sr["camera_id"]
+        if cid not in cam_stats:
+            cam_stats[cid] = {"camera_id": cid, "camera_name": sr["camera_name"],
+                               "segment_count": 0, "disk_bytes": 0}
+        cam_stats[cid]["segment_count"] += 1
+        try:
+            sz = _Path(sr["path"]).stat().st_size
+            cam_stats[cid]["disk_bytes"] += sz
+            total_bytes += sz
+        except OSError:
+            pass
+
+    per_camera = sorted(cam_stats.values(), key=lambda c: c["disk_bytes"], reverse=True)
+    return {
+        "count": row["cnt"] or 0,
+        "oldest_ts": row["oldest"],
+        "newest_ts": row["newest"],
+        "disk_bytes": total_bytes,
+        "recordings_dir": str(_s.recordings_dir),
+        "max_age_days": _s.recording_max_age_days,
+        "per_camera": per_camera,
+    }
+
+
 @router.get("/timeline")
 async def timeline(camera_id: int | None = None, range_s: int = 86400) -> dict:
     conn = get_conn()

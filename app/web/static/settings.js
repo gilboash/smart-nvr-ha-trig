@@ -62,6 +62,29 @@
 
   loadClipStats();
 
+  // Recording stats
+  async function loadRecordingStats() {
+    const statsEl = document.getElementById('rec-stats');
+    if (!statsEl) return;
+    try {
+      const r = await fetch('/api/recordings/stats');
+      if (!r.ok) { statsEl.textContent = 'Could not load recording stats.'; return; }
+      const s = await r.json();
+      const mb = (s.disk_bytes / 1024 / 1024).toFixed(1);
+      const oldest = s.oldest_ts ? new Date(s.oldest_ts * 1000).toLocaleDateString() : '—';
+      const newest = s.newest_ts ? new Date(s.newest_ts * 1000).toLocaleDateString() : '—';
+      const age = s.max_age_days > 0 ? `auto-delete after ${s.max_age_days} days` : 'kept forever';
+      statsEl.innerHTML =
+        `<strong>${s.count}</strong> segments &nbsp;·&nbsp; <strong>${mb} MB</strong> on disk &nbsp;·&nbsp; ` +
+        `oldest: ${oldest} &nbsp;·&nbsp; newest: ${newest} &nbsp;·&nbsp; ${age}<br>` +
+        `<span style="color:#4a5568">Storage: ${s.recordings_dir}</span>`;
+    } catch (_) {
+      statsEl.textContent = 'Could not load recording stats.';
+    }
+  }
+
+  loadRecordingStats();
+
   // Clip cleanup button
   const cleanupBtn = document.getElementById('cleanup-btn');
   const cleanupStatus = document.getElementById('cleanup-status');
