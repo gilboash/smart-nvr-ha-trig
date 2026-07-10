@@ -68,6 +68,7 @@ class InferenceWorker:
         self._clip_recorder = None
         self._last_frame_ts: float = 0.0   # updated each time _run() processes a frame
         self._frames_processed: int = 0
+        self._run_generation: int = 0      # incremented on each restart; stale threads exit on mismatch
 
     def _load_model(self, weights: str = "yolov8n.pt"):
         from ultralytics import YOLO
@@ -192,7 +193,11 @@ class InferenceWorker:
         return [i for i, name in self._model_class_names.items() if name in allowed_names]
 
     def _run(self) -> None:
+        my_gen = self._run_generation
         while not self._stop.is_set():
+            if self._run_generation != my_gen:
+                logger.debug("inference: stale thread (gen %d) exiting", my_gen)
+                return
             frame = self.bus.take(timeout=0.5)
             if frame is None:
                 continue
@@ -366,6 +371,7 @@ class InferenceWorker:
     def _restart_inference(self) -> None:
         """Restart a dead inference thread. Called from sweep loop."""
         logger.warning("restarting inference thread")
+        self._run_generation += 1  # signal any stale thread to exit when it next wakes
         self._thread = None
         try:
             self._load_model()
@@ -400,7 +406,7 @@ class InferenceWorker:
                     self._restart_inference()
                 elif self._last_frame_ts > 0:
                     age = time.time() - self._last_frame_ts
-                    if age > 30.0:
+                    if age > 15.0:
                         logger.error(
                             "inference thread hung (%.0fs since last frame) — abandoning and restarting",
                             age,
