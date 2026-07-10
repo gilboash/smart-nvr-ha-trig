@@ -140,6 +140,19 @@ MIGRATIONS: list[str] = [
     """
     ALTER TABLE zones ADD COLUMN clip_enabled INTEGER NOT NULL DEFAULT 1;
     """,
+    # v9 — continuous DVR recording
+    """
+    CREATE TABLE IF NOT EXISTS recordings (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        camera_id   INTEGER NOT NULL REFERENCES cameras(id) ON DELETE CASCADE,
+        start_ts    REAL NOT NULL,
+        end_ts      REAL,
+        path        TEXT NOT NULL,
+        frame_count INTEGER DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_recordings_cam_ts ON recordings(camera_id, start_ts DESC);
+    ALTER TABLE cameras ADD COLUMN record_enabled INTEGER NOT NULL DEFAULT 1;
+    """,
 ]
 
 

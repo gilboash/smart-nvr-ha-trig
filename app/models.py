@@ -16,6 +16,7 @@ class CameraIn(BaseModel):
     classes: list[str] = ["person"]
     hysteresis_s: float = Field(default=5.0, ge=0.5, le=120.0)
     detection_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    record_enabled: bool = True
 
 
 class CameraPatch(BaseModel):
@@ -27,6 +28,7 @@ class CameraPatch(BaseModel):
     classes: Optional[list[str]] = None
     hysteresis_s: Optional[float] = Field(default=None, ge=0.5, le=120.0)
     detection_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    record_enabled: Optional[bool] = None
 
 
 class Camera(BaseModel):
@@ -39,6 +41,7 @@ class Camera(BaseModel):
     classes: list[str]
     hysteresis_s: float
     detection_threshold: float
+    record_enabled: bool
     created_at: float
     updated_at: float
 
@@ -54,6 +57,7 @@ class Camera(BaseModel):
             classes=json.loads(row["classes_json"]),
             hysteresis_s=row["hysteresis_s"],
             detection_threshold=row["detection_threshold"],
+            record_enabled=bool(row["record_enabled"]),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )

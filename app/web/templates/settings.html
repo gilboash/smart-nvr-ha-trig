@@ -4,6 +4,22 @@
 <h1>Settings</h1>
 
 <div class="card">
+  <h2>Continuous recording</h2>
+  <p style="color:var(--muted);font-size:0.88rem;margin-top:0">
+    All cameras record continuously at 1fps in H.264 segments. Detection events appear as markers on the timeline.
+    <small>(saved to .env — restart to apply)</small>
+  </p>
+  <div class="row">
+    <div><label>Segment length (min)</label><input form="env-form" name="SNVR_RECORDING_SEGMENT_MIN" type="number" min="1" max="60"></div>
+    <div><label>Delete recordings older than (days, 0 = keep forever)</label><input form="env-form" name="SNVR_RECORDING_MAX_AGE_DAYS" type="number" min="0"></div>
+  </div>
+  <div style="margin-top:0.75rem;display:flex;gap:1rem;align-items:center">
+    <button id="rec-cleanup-btn" type="button">Clean up now</button>
+    <span id="rec-cleanup-status" style="font-size:0.88rem"></span>
+  </div>
+</div>
+
+<div class="card">
   <h2>Clip storage</h2>
   <div id="clip-stats" style="font-size:0.88rem;color:#8892a0;margin-bottom:1rem">Loading…</div>
   <h3 style="margin-bottom:0.5rem">Retention settings <small style="font-weight:400;color:#4a5568">(saved to .env — restart to apply)</small></h3>

@@ -28,12 +28,17 @@ class Settings(BaseSettings):
     session_secret: str = ""
     admin_password: str = ""
 
-    # Clip recording around detection events
+    # Clip recording around detection events (legacy)
     clips_dir: Path = Path("./data/clips")
     clip_pre_s: int = 30           # seconds of pre-trigger footage
     clip_post_s: int = 30          # seconds of post-trigger footage
     clip_max_age_days: int = 30    # delete clips older than N days (0 = keep forever)
     clip_max_s: int = 300          # hard cap on clip length in seconds (0 = no cap)
+
+    # Continuous DVR recording
+    recordings_dir: Path = Path("./data/recordings")
+    recording_segment_min: int = 5     # flush a new MP4 segment every N minutes
+    recording_max_age_days: int = 7    # rolling retention window (0 = keep forever)
 
     # MQTT / Home Assistant integration (leave mqtt_host blank to disable)
     mqtt_host: str = ""

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from app.db import get_conn, tx
@@ -116,15 +116,27 @@ async def clip_stats() -> dict:
 
 
 @router.post("/cleanup")
-async def run_cleanup(request: Request) -> dict:
-    manager = getattr(request.app.state, "manager", None)
-    if manager is None:
-        raise HTTPException(503, "pipeline not ready")
-    cr = getattr(manager, "clip_recorder", None)
-    if cr is None:
-        raise HTTPException(503, "clip recorder not available")
-    removed = cr.cleanup_old()
-    return {"removed": removed}
+async def run_cleanup() -> dict:
+    import os as _os
+    from pathlib import Path as _Path
+    from app.db import get_conn as _gc, tx as _tx
+    from app.settings import settings as _s
+    if _s.clip_max_age_days <= 0:
+        return {"removed": 0}
+    cutoff = __import__("time").time() - _s.clip_max_age_days * 86400
+    rows = _gc().execute("SELECT id, path FROM clips WHERE created_at < ?", (cutoff,)).fetchall()
+    count = 0
+    for r in rows:
+        try: _os.remove(r["path"])
+        except OSError: pass
+        try:
+            thumb = _Path(r["path"]).with_suffix(".jpg")
+            if thumb.exists(): thumb.unlink()
+        except OSError: pass
+        with _tx() as conn:
+            conn.execute("DELETE FROM clips WHERE id = ?", (r["id"],))
+        count += 1
+    return {"removed": count}
 
 
 @router.get("/{clip_id}/thumb.jpg")

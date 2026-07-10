@@ -31,6 +31,12 @@
               <option value="1" ${camera.enabled ? 'selected' : ''}>enabled</option>
               <option value="0" ${!camera.enabled ? 'selected' : ''}>disabled</option>
             </select></div>
+            <div><label>Record continuously</label>
+              <label style="display:inline-flex;align-items:center;gap:0.4rem;margin-top:0.3rem">
+                <input type="checkbox" name="record_enabled" ${camera.record_enabled ? 'checked' : ''}>
+                <span style="font-size:0.85rem;color:var(--muted)">1fps DVR rolling window</span>
+              </label>
+            </div>
             <div><label>Target FPS</label><input name="target_fps" type="number" step="0.5" min="0" max="30" value="${camera.target_fps}"></div>
             <div><label>Model</label><input name="model" value="${escapeHtml(camera.model)}"></div>
             <div><label>Detection classes</label><div id="edit-classes-picker"></div></div>
@@ -332,6 +338,7 @@
       name: fd.get('name'),
       rtsp_url: fd.get('rtsp_url'),
       enabled: fd.get('enabled') === '1',
+      record_enabled: e.target.querySelector('input[name="record_enabled"]').checked,
       target_fps: Number(fd.get('target_fps')),
       model: fd.get('model'),
       classes,

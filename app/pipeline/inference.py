@@ -65,7 +65,7 @@ class InferenceWorker:
         self._model = None
         self._model_class_names: dict[int, str] = {}
         self._few_shot: Optional[FewShotClassifier] = None
-        self._clip_recorder = None
+        self._continuous_recorder = None
         self._last_frame_ts: float = 0.0   # updated each time _run() processes a frame
         self._frames_processed: int = 0
         self._run_generation: int = 0      # incremented on each restart; stale threads exit on mismatch
@@ -88,8 +88,8 @@ class InferenceWorker:
         self._model_class_names = dict(model.names) if hasattr(model, "names") else {}
         logger.info("inference device = %s, classes = %d", self.device, len(self._model_class_names))
 
-    def set_clip_recorder(self, cr) -> None:
-        self._clip_recorder = cr
+    def set_continuous_recorder(self, cr) -> None:
+        self._continuous_recorder = cr
 
     def _ensure_few_shot(self) -> FewShotClassifier:
         if self._few_shot is None:
@@ -206,8 +206,8 @@ class InferenceWorker:
             if self._frames_processed % 500 == 0:
                 logger.debug("inference heartbeat: %d frames processed", self._frames_processed)
             try:
-                if self._clip_recorder is not None:
-                    self._clip_recorder.push_frame(frame.camera_id, frame.bgr, frame.ts)
+                if self._continuous_recorder is not None:
+                    self._continuous_recorder.push_frame(frame.camera_id, frame.bgr, frame.ts)
                 self._process_detection(frame)
                 self._process_state(frame)
             except BaseException as exc:
@@ -299,10 +299,6 @@ class InferenceWorker:
         with self._detections_lock:
             self._latest_detections[camera_id] = detections
             self._latest_detections_ts[camera_id] = time.time()
-
-        # Keep extending the active clip as long as detections are present
-        if detections and self._clip_recorder is not None:
-            self._clip_recorder.extend_if_active(camera_id)
 
         for ev in events:
             self._publish(ev)

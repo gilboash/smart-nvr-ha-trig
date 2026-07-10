@@ -192,3 +192,21 @@ img.snapshot { display: block; max-width: 100%; height: auto; border-radius: 4px
 .tl-video-hdr { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
 .tl-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .tl-video-meta { color: #9aa; font-size: 0.88rem; }
+/* DVR continuous recording timeline */
+.tl-track-dvr { background: #0a0c10; }
+.tl-seg {
+  position: absolute;
+  height: 100%; top: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: filter 0.1s;
+}
+.tl-seg:hover { filter: brightness(1.4); }
+.tl-event-tick {
+  position: absolute;
+  width: 3px; height: 100%; top: 0;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.tl-legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; font-size: 0.8rem; color: #9aa; }
+.tl-legend-item { display: flex; align-items: center; gap: 0.3rem; }

@@ -17,6 +17,7 @@ _ALLOWED = {
     "SNVR_LOG_LEVEL", "SNVR_DEVICE", "SNVR_STATE_CHECK_INTERVAL",
     "SNVR_SESSION_SECRET", "SNVR_ADMIN_PASSWORD",
     "SNVR_CLIP_PRE_S", "SNVR_CLIP_POST_S", "SNVR_CLIP_MAX_AGE_DAYS", "SNVR_CLIP_MAX_S",
+    "SNVR_RECORDING_SEGMENT_MIN", "SNVR_RECORDING_MAX_AGE_DAYS",
 }
 
 
@@ -43,6 +44,8 @@ async def get_env() -> dict:
         "SNVR_CLIP_POST_S": str(settings.clip_post_s),
         "SNVR_CLIP_MAX_AGE_DAYS": str(settings.clip_max_age_days),
         "SNVR_CLIP_MAX_S": str(settings.clip_max_s),
+        "SNVR_RECORDING_SEGMENT_MIN": str(settings.recording_segment_min),
+        "SNVR_RECORDING_MAX_AGE_DAYS": str(settings.recording_max_age_days),
     }
 
 

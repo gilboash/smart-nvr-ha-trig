@@ -62,7 +62,7 @@
 
   loadClipStats();
 
-  // Cleanup button
+  // Clip cleanup button
   const cleanupBtn = document.getElementById('cleanup-btn');
   const cleanupStatus = document.getElementById('cleanup-status');
   if (cleanupBtn) {
@@ -88,6 +88,34 @@
         cleanupStatus.textContent = 'Request failed.';
       }
       cleanupBtn.disabled = false;
+    });
+  }
+
+  // Recording cleanup button
+  const recCleanupBtn = document.getElementById('rec-cleanup-btn');
+  const recCleanupStatus = document.getElementById('rec-cleanup-status');
+  if (recCleanupBtn) {
+    recCleanupBtn.addEventListener('click', async () => {
+      recCleanupBtn.disabled = true;
+      recCleanupStatus.className = '';
+      recCleanupStatus.textContent = 'Running…';
+      try {
+        const r = await fetch('/api/recordings/cleanup', { method: 'POST' });
+        if (r.ok) {
+          const j = await r.json();
+          recCleanupStatus.className = 'status-ok';
+          recCleanupStatus.textContent = j.removed === 0
+            ? 'Nothing to remove.'
+            : `Removed ${j.removed} segment${j.removed === 1 ? '' : 's'}.`;
+        } else {
+          recCleanupStatus.className = 'status-bad';
+          recCleanupStatus.textContent = 'Cleanup failed.';
+        }
+      } catch (_) {
+        recCleanupStatus.className = 'status-bad';
+        recCleanupStatus.textContent = 'Request failed.';
+      }
+      recCleanupBtn.disabled = false;
     });
   }
 })();

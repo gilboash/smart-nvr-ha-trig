@@ -43,6 +43,7 @@ async def lifespan(app: FastAPI):
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     settings.snapshot_dir.mkdir(parents=True, exist_ok=True)
+    settings.recordings_dir.mkdir(parents=True, exist_ok=True)
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
 
     from app.db import init_db
@@ -76,7 +77,7 @@ app.add_middleware(SessionMiddleware, secret_key=_session_secret, max_age=7 * 24
 
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
-from app.api import cameras, zones, snapshots, events, ws, stats, auth as auth_router, zone_samples, env_settings, clips  # noqa: E402
+from app.api import cameras, zones, snapshots, events, ws, stats, auth as auth_router, zone_samples, env_settings, clips, recordings  # noqa: E402
 
 app.include_router(cameras.router, prefix="/api")
 app.include_router(zones.router, prefix="/api")
@@ -85,6 +86,7 @@ app.include_router(env_settings.router)
 app.include_router(snapshots.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(clips.router, prefix="/api")
+app.include_router(recordings.router, prefix="/api")
 app.include_router(stats.router)
 app.include_router(auth_router.router)
 app.include_router(ws.router)

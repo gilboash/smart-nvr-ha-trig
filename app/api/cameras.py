@@ -33,8 +33,8 @@ async def create_camera(body: CameraIn, request: Request) -> Camera:
                 """
                 INSERT INTO cameras (name, rtsp_url, enabled, target_fps, model,
                                      classes_json, hysteresis_s, detection_threshold,
-                                     created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     record_enabled, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     body.name,
@@ -45,6 +45,7 @@ async def create_camera(body: CameraIn, request: Request) -> Camera:
                     json.dumps(body.classes),
                     body.hysteresis_s,
                     body.detection_threshold,
+                    int(body.record_enabled),
                     ts,
                     ts,
                 ),
@@ -73,6 +74,8 @@ async def patch_camera(camera_id: int, body: CameraPatch, request: Request) -> C
         data["classes_json"] = json.dumps(data.pop("classes"))
     if "enabled" in data:
         data["enabled"] = int(data["enabled"])
+    if "record_enabled" in data:
+        data["record_enabled"] = int(data["record_enabled"])
     for k, v in data.items():
         fields.append(f"{k} = ?")
         values.append(v)

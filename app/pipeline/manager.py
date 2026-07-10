@@ -34,9 +34,7 @@ class PipelineManager:
         self.snapshot_store = SnapshotStore()
         self.ws_broadcaster = WSBroadcaster()
         self.sqlite_sink = SQLiteSink()
-        from app.pipeline.clip_recorder import ClipRecorder
-        self.clip_recorder = ClipRecorder()
-        self.publishers = [self.sqlite_sink, self.ws_broadcaster, self.clip_recorder]
+        self.publishers = [self.sqlite_sink, self.ws_broadcaster]
 
         from app.settings import settings as _settings
         self._mqtt_publisher = None
@@ -46,10 +44,13 @@ class PipelineManager:
             self._mqtt_publisher.connect()
             self.publishers.append(self._mqtt_publisher)
 
+        from app.pipeline.continuous_recorder import ContinuousRecorder
+        self.continuous_recorder = ContinuousRecorder()
+
         self._inference = InferenceWorker(
             self.bus, self.publishers, self.snapshot_store
         )
-        self._inference.set_clip_recorder(self.clip_recorder)
+        self._inference.set_continuous_recorder(self.continuous_recorder)
         self._inference.start()
         self.reconcile()
 
@@ -100,6 +101,8 @@ class PipelineManager:
 
             if self._inference is not None:
                 self._inference.set_camera_configs(wanted)
+            if hasattr(self, "continuous_recorder"):
+                self.continuous_recorder.invalidate_record_cache()
 
     def status(self) -> list[dict]:
         with self._lock:
