@@ -30,8 +30,9 @@ class ContinuousRecorder:
         self._frames: dict[int, list] = {}              # camera_id → [(ts, jpeg_bytes)]
         self._segment_start: dict[int, float] = {}      # camera_id → segment start ts
         self._segment_db_id: dict[int, Optional[int]] = {}  # camera_id → open recordings row id
-        self._last_push_ts: dict[int, float] = {}       # 1fps throttle
+        self._last_push_ts: dict[int, float] = {}       # throttle per camera
         self._record_enabled: dict[int, bool] = {}      # lazily cached from DB
+        self._record_fps: dict[int, float] = {}         # lazily cached from DB
 
         threading.Thread(target=self._cleanup_loop, daemon=True, name="rec-cleanup").start()
 
@@ -40,7 +41,8 @@ class ContinuousRecorder:
     def push_frame(self, camera_id: int, bgr: np.ndarray, ts: float) -> None:
         if not self._is_record_enabled(camera_id):
             return
-        if ts - self._last_push_ts.get(camera_id, 0.0) < 0.9:
+        min_gap = 1.0 / self._get_record_fps(camera_id)
+        if ts - self._last_push_ts.get(camera_id, 0.0) < min_gap * 0.9:
             return
         self._last_push_ts[camera_id] = ts
 
@@ -76,8 +78,10 @@ class ContinuousRecorder:
         with self._lock:
             if camera_id is None:
                 self._record_enabled.clear()
+                self._record_fps.clear()
             else:
                 self._record_enabled.pop(camera_id, None)
+                self._record_fps.pop(camera_id, None)
 
     def cleanup_old(self) -> int:
         if self._max_age_days <= 0:
@@ -115,6 +119,19 @@ class ContinuousRecorder:
         result = bool(row["record_enabled"]) if row else False
         with self._lock:
             self._record_enabled[camera_id] = result
+        return result
+
+    def _get_record_fps(self, camera_id: int) -> float:
+        with self._lock:
+            if camera_id in self._record_fps:
+                return self._record_fps[camera_id]
+        from app.db import get_conn
+        row = get_conn().execute(
+            "SELECT record_fps FROM cameras WHERE id = ?", (camera_id,)
+        ).fetchone()
+        result = float(row["record_fps"]) if row and row["record_fps"] else 1.0
+        with self._lock:
+            self._record_fps[camera_id] = result
         return result
 
     def _open_segment(self, camera_id: int, ts: float) -> None:
@@ -211,4 +228,9 @@ class ContinuousRecorder:
                 self.cleanup_old()
             except Exception:
                 logger.exception("recording cleanup error")
+            try:
+                from app.events.snapshot_store import SnapshotStore
+                SnapshotStore().cleanup_old()
+            except Exception:
+                logger.exception("snapshot cleanup error")
             time.sleep(6 * 3600)

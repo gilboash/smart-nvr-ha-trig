@@ -153,6 +153,10 @@ MIGRATIONS: list[str] = [
     CREATE INDEX IF NOT EXISTS idx_recordings_cam_ts ON recordings(camera_id, start_ts DESC);
     ALTER TABLE cameras ADD COLUMN record_enabled INTEGER NOT NULL DEFAULT 1;
     """,
+    # v10 — per-camera DVR recording fps
+    """
+    ALTER TABLE cameras ADD COLUMN record_fps REAL NOT NULL DEFAULT 1.0;
+    """,
 ]
 
 

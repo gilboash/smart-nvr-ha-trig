@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     clip_max_age_days: int = 30    # delete clips older than N days (0 = keep forever)
     clip_max_s: int = 300          # hard cap on clip length in seconds (0 = no cap)
 
+    # Snapshots (one JPEG per detection episode)
+    snapshot_max_age_days: int = 7     # delete snapshots older than N days (0 = keep forever)
+
     # Continuous DVR recording
     recordings_dir: Path = Path("./data/recordings")
     recording_segment_min: int = 5     # flush a new MP4 segment every N minutes

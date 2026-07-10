@@ -33,8 +33,8 @@ async def create_camera(body: CameraIn, request: Request) -> Camera:
                 """
                 INSERT INTO cameras (name, rtsp_url, enabled, target_fps, model,
                                      classes_json, hysteresis_s, detection_threshold,
-                                     record_enabled, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     record_enabled, record_fps, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     body.name,
@@ -46,6 +46,7 @@ async def create_camera(body: CameraIn, request: Request) -> Camera:
                     body.hysteresis_s,
                     body.detection_threshold,
                     int(body.record_enabled),
+                    body.record_fps,
                     ts,
                     ts,
                 ),

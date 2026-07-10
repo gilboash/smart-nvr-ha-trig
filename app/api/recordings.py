@@ -177,8 +177,10 @@ async def get_video(rec_id: int):
 
 @router.post("/cleanup")
 async def trigger_cleanup(request: Request) -> dict:
+    from app.events.snapshot_store import SnapshotStore
     manager = getattr(request.app.state, "manager", None)
     if manager is None or not hasattr(manager, "continuous_recorder"):
         raise HTTPException(503, "recorder not available")
-    count = await asyncio.to_thread(manager.continuous_recorder.cleanup_old)
-    return {"removed": count}
+    rec_removed = await asyncio.to_thread(manager.continuous_recorder.cleanup_old)
+    snap_removed = await asyncio.to_thread(SnapshotStore().cleanup_old)
+    return {"removed": rec_removed + snap_removed, "recordings": rec_removed, "snapshots": snap_removed}

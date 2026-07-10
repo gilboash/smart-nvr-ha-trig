@@ -10,6 +10,7 @@
   <div class="row">
     <div><label>Segment length (min)</label><input form="env-form" name="SNVR_RECORDING_SEGMENT_MIN" type="number" min="1" max="60"></div>
     <div><label>Delete recordings older than (days, 0 = keep forever)</label><input form="env-form" name="SNVR_RECORDING_MAX_AGE_DAYS" type="number" min="0"></div>
+    <div><label>Delete event snapshots older than (days, 0 = keep forever)</label><input form="env-form" name="SNVR_SNAPSHOT_MAX_AGE_DAYS" type="number" min="0"></div>
   </div>
   <div style="margin-top:0.75rem;display:flex;gap:1rem;align-items:center">
     <button id="rec-cleanup-btn" type="button">Clean up now</button>
