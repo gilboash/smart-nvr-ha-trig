@@ -85,16 +85,17 @@
     });
   }
 
-  // Recording cleanup button
-  const recCleanupBtn = document.getElementById('rec-cleanup-btn');
+  // Delete all recordings button
+  const recDeleteAllBtn = document.getElementById('rec-delete-all-btn');
   const recCleanupStatus = document.getElementById('rec-cleanup-status');
-  if (recCleanupBtn) {
-    recCleanupBtn.addEventListener('click', async () => {
-      recCleanupBtn.disabled = true;
+  if (recDeleteAllBtn) {
+    recDeleteAllBtn.addEventListener('click', async () => {
+      if (!confirm('Delete ALL recordings? This cannot be undone.')) return;
+      recDeleteAllBtn.disabled = true;
       recCleanupStatus.className = '';
-      recCleanupStatus.textContent = 'Running…';
+      recCleanupStatus.textContent = 'Deleting…';
       try {
-        const r = await fetch('/api/recordings/cleanup', { method: 'POST' });
+        const r = await fetch('/api/recordings/all', { method: 'DELETE' });
         if (r.ok) {
           const j = await r.json();
           recCleanupStatus.className = 'status-ok';
@@ -104,13 +105,13 @@
           loadRecordingStats();
         } else {
           recCleanupStatus.className = 'status-bad';
-          recCleanupStatus.textContent = 'Cleanup failed.';
+          recCleanupStatus.textContent = 'Delete failed.';
         }
       } catch (_) {
         recCleanupStatus.className = 'status-bad';
         recCleanupStatus.textContent = 'Request failed.';
       }
-      recCleanupBtn.disabled = false;
+      recDeleteAllBtn.disabled = false;
     });
   }
 })();

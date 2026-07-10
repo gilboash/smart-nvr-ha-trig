@@ -175,6 +175,26 @@ async def get_video(rec_id: int):
     return FileResponse(str(path), media_type="video/mp4")
 
 
+@router.delete("/all")
+async def delete_all_recordings() -> dict:
+    """Delete every completed recording segment — files and DB rows."""
+    import os as _os
+    from app.db import get_conn as _gc, tx as _tx
+    rows = _gc().execute(
+        "SELECT id, path FROM recordings WHERE end_ts IS NOT NULL"
+    ).fetchall()
+    count = 0
+    for r in rows:
+        try:
+            _os.remove(r["path"])
+        except OSError:
+            pass
+        with _tx() as conn:
+            conn.execute("DELETE FROM recordings WHERE id = ?", (r["id"],))
+        count += 1
+    return {"removed": count}
+
+
 @router.post("/cleanup")
 async def trigger_cleanup(request: Request) -> dict:
     from app.events.snapshot_store import SnapshotStore
