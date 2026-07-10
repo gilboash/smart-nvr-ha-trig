@@ -12,7 +12,7 @@
     cat:        '#a0e27e',
   };
 
-  let timelineRange = 86400;
+  let timelineRange = 21600;
   let cameraFilter = null;
   let cameras = [];
 
@@ -91,7 +91,7 @@
       load();
     });
 
-    for (const [label, s] of [['24 h', 86400], ['48 h', 172800], ['7 d', 604800]]) {
+    for (const [label, s] of [['6 h', 21600], ['12 h', 43200], ['24 h', 86400], ['48 h', 172800], ['7 d', 604800]]) {
       const b = document.createElement('button');
       b.className = 'btn-sm tl-range-btn' + (timelineRange === s ? ' tl-range-active' : '');
       b.textContent = label;
