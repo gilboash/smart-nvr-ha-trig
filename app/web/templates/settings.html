@@ -25,7 +25,10 @@
     Changes are written to <code>.env</code>. Run <code>docker compose up -d</code> (no rebuild needed) to apply.
   </p>
   <form id="env-form">
-    <h3 style="margin-bottom:0.5rem">MQTT / Home Assistant</h3>
+    <h3 style="margin-bottom:0.5rem">MQTT / Home Assistant
+      <button id="mqtt-reset-btn" type="button" style="margin-left:1rem;font-size:0.8rem">Re-announce all zones to HA</button>
+      <span id="mqtt-reset-status" style="margin-left:0.75rem;font-size:0.85rem"></span>
+    </h3>
     <div class="row">
       <div><label>MQTT host</label><input name="SNVR_MQTT_HOST" placeholder="192.168.1.x (blank to disable)"></div>
       <div><label>MQTT port</label><input name="SNVR_MQTT_PORT" type="number" min="1" max="65535"></div>

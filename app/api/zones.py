@@ -89,11 +89,14 @@ async def patch_zone(zone_id: int, body: ZonePatch) -> Zone:
 
 @router.delete("/zones/{zone_id}", status_code=204)
 async def delete_zone(zone_id: int, request: Request):
-    row = get_conn().execute("SELECT id FROM zones WHERE id = ?", (zone_id,)).fetchone()
+    row = get_conn().execute(
+        "SELECT z.id, z.zone_type, z.camera_id FROM zones z WHERE z.id = ?", (zone_id,)
+    ).fetchone()
     if row is None:
         raise HTTPException(404, "zone not found")
     with tx() as conn:
         conn.execute("DELETE FROM zones WHERE id = ?", (zone_id,))
+    _mqtt_withdraw(request, zone_id, row["camera_id"], row["zone_type"])
     _reconcile(request)
 
 
@@ -101,3 +104,10 @@ def _reconcile(request: Request) -> None:
     manager = getattr(request.app.state, "manager", None)
     if manager is not None:
         manager.reconcile()
+
+
+def _mqtt_withdraw(request: Request, zone_id: int, cam_id: int, zone_type: str) -> None:
+    manager = getattr(request.app.state, "manager", None)
+    pub = getattr(manager, "_mqtt_publisher", None) if manager else None
+    if pub is not None:
+        pub.withdraw_zone(zone_id, cam_id, zone_type)

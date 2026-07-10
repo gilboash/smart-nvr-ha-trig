@@ -124,6 +124,32 @@ class MQTTPublisher(EventPublisher):
             zone_id, row["zone_name"], entity_type, row["cam_name"],
         )
 
+    def withdraw_zone(self, zone_id: int, cam_id: int, zone_type: str) -> None:
+        """Publish empty payload to discovery topic — tells HA to remove the entity."""
+        entity_type = "sensor" if zone_type == "state" else "binary_sensor"
+        unique_id = f"naco_nvr_{cam_id}_{zone_id}"
+        disc_topic = f"{settings.mqtt_discovery_prefix}/{entity_type}/{unique_id}/config"
+        self._client.publish(disc_topic, "", qos=1, retain=True)
+        with self._lock:
+            self._discovered.discard(zone_id)
+        logger.info("MQTT withdraw: zone %d (cam %d) removed from HA discovery", zone_id, cam_id)
+
+    def announce_all(self) -> None:
+        """Re-publish discovery config for every zone currently in the DB."""
+        rows = get_conn().execute(
+            "SELECT z.id AS zone_id, z.name AS zone_name, z.zone_type, "
+            "c.id AS cam_id, c.name AS cam_name "
+            "FROM zones z JOIN cameras c ON c.id = z.camera_id"
+        ).fetchall()
+        with self._lock:
+            self._discovered.clear()
+        for r in rows:
+            self._publish_discovery(
+                type("E", (), {"zone_id": r["zone_id"], "camera_id": r["cam_id"]})(),
+                dict(r),
+            )
+        logger.info("MQTT announce_all: re-announced %d zones", len(rows))
+
     def _publish_state(self, event: EpisodeEvent) -> None:
         cam_id = event.camera_id
         zone_id = event.zone_id

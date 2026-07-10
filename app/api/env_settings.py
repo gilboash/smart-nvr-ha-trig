@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -57,6 +57,17 @@ async def update_env(body: EnvUpdate) -> dict:
     if bad:
         raise HTTPException(400, f"Disallowed keys: {sorted(bad)}")
     _write_env(body.values)
+    return {"ok": True}
+
+
+@router.post("/mqtt/reset")
+async def mqtt_reset(request: Request) -> dict:
+    """Re-publish HA discovery for all current zones (fixes stale/renamed entities)."""
+    manager = getattr(request.app.state, "manager", None)
+    pub = getattr(manager, "_mqtt_publisher", None) if manager else None
+    if pub is None:
+        raise HTTPException(503, "MQTT not connected")
+    pub.announce_all()
     return {"ok": True}
 
 

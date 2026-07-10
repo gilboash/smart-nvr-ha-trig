@@ -60,6 +60,31 @@
 
   loadRecordingStats();
 
+  // MQTT re-announce button
+  const mqttResetBtn = document.getElementById('mqtt-reset-btn');
+  const mqttResetStatus = document.getElementById('mqtt-reset-status');
+  if (mqttResetBtn) {
+    mqttResetBtn.addEventListener('click', async () => {
+      mqttResetBtn.disabled = true;
+      mqttResetStatus.className = '';
+      mqttResetStatus.textContent = 'Sending…';
+      try {
+        const r = await fetch('/api/settings/mqtt/reset', { method: 'POST' });
+        if (r.ok) {
+          mqttResetStatus.className = 'status-ok';
+          mqttResetStatus.textContent = 'Done — HA will update shortly.';
+        } else {
+          mqttResetStatus.className = 'status-bad';
+          mqttResetStatus.textContent = r.status === 503 ? 'MQTT not connected.' : 'Failed.';
+        }
+      } catch (_) {
+        mqttResetStatus.className = 'status-bad';
+        mqttResetStatus.textContent = 'Request failed.';
+      }
+      mqttResetBtn.disabled = false;
+    });
+  }
+
   // Recording cleanup button
   const recCleanupBtn = document.getElementById('rec-cleanup-btn');
   const recCleanupStatus = document.getElementById('rec-cleanup-status');
