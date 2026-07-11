@@ -77,7 +77,7 @@
     const gap = enabled.length > 1 ? REFRESH_MS / enabled.length : REFRESH_MS;
     enabled.forEach((cam, idx) => {
       setTimeout(function tick() {
-        refreshCamera(cam);
+        if (!document.hidden) refreshCamera(cam);
         setTimeout(tick, REFRESH_MS);
       }, idx * gap);
     });

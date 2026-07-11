@@ -59,8 +59,11 @@
           }
         } catch (_) {}
       }
-      poll();
-      setInterval(poll, 5000);
+      let _timer = null;
+      function start() { if (!_timer) { poll(); _timer = setInterval(poll, 5000); } }
+      function stop()  { clearInterval(_timer); _timer = null; }
+      document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+      start();
     })();
   </script>
 </body>

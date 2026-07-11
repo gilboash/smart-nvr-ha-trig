@@ -376,6 +376,7 @@
   function pollStates(zones) {
     if (_stateTimer) clearInterval(_stateTimer);
     async function refresh() {
+      if (document.hidden) return;
       try {
         const res = await fetch('/api/cameras/' + cameraId + '/zones/states');
         if (!res.ok) return;
@@ -405,6 +406,7 @@
       ws = new WebSocket(`${proto}//${location.host}/ws/preview/${cameraId}?boxes=${boxes}`);
       ws.binaryType = 'arraybuffer';
       ws.onmessage = ev => {
+        if (document.hidden) return;
         const blob = new Blob([ev.data], { type: 'image/jpeg' });
         const url = URL.createObjectURL(blob);
         imgEl.onload = () => URL.revokeObjectURL(url);
@@ -416,6 +418,9 @@
     connect();
     boxesCheckbox.addEventListener('change', () => {
       if (ws) try { ws.close(); } catch (_) {}
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && (!ws || ws.readyState > 1)) connect();
     });
   }
 
