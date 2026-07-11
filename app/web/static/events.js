@@ -92,7 +92,7 @@
         _imgObserver.unobserve(img);
       }
     }
-  }, { rootMargin: '200px' });
+  }, { rootMargin: '50px' });
 
   function makeRow(e) {
     const tr = document.createElement('tr');
@@ -107,11 +107,12 @@
       <td>${fmt(e.start_ts)}</td>
       <td>${open ? '<span class="badge open">open</span>' : fmt(e.end_ts)}</td>
     `;
-    if (e.snapshot_path) {
+    const episodeId = e.id ?? e.episode_id;
+    if (e.snapshot_path && episodeId) {
       const img = document.createElement('img');
       img.className = 'thumb';
       img.alt = '';
-      img.dataset.src = `/api/events/${e.id}/snapshot.jpg`;
+      img.dataset.src = `/api/events/${episodeId}/snapshot.jpg`;
       tr.querySelector('.thumb-cell').appendChild(img);
       _imgObserver.observe(img);
     } else {

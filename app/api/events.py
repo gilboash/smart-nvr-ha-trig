@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+import cv2
+import numpy as np
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.db import get_conn
 from app.models import Episode
@@ -40,8 +42,11 @@ async def list_events(
     return [Episode.from_row(r) for r in rows]
 
 
+_THUMB_MAX_W = 480  # thumbnail width cap — keeps browser memory low
+
+
 @router.get("/{episode_id}/snapshot.jpg")
-async def snapshot(episode_id: int) -> FileResponse:
+async def snapshot(episode_id: int) -> Response:
     row = get_conn().execute(
         "SELECT snapshot_path FROM episodes WHERE id = ?", (episode_id,)
     ).fetchone()
@@ -53,4 +58,14 @@ async def snapshot(episode_id: int) -> FileResponse:
     p = Path(path)
     if not p.exists():
         raise HTTPException(404, "snapshot file missing on disk")
-    return FileResponse(p, media_type="image/jpeg")
+    data = p.read_bytes()
+    bgr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    if bgr is None:
+        return Response(data, media_type="image/jpeg")
+    h, w = bgr.shape[:2]
+    if w > _THUMB_MAX_W:
+        bgr = cv2.resize(bgr, (_THUMB_MAX_W, int(h * _THUMB_MAX_W / w)), interpolation=cv2.INTER_LINEAR)
+    ok, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 70])
+    if not ok:
+        return Response(data, media_type="image/jpeg")
+    return Response(bytes(buf), media_type="image/jpeg")

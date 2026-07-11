@@ -92,7 +92,8 @@ canvas.zone-canvas {
   cursor: crosshair;
 }
 img.snapshot { display: block; max-width: 100%; height: auto; border-radius: 4px; }
-.thumb { width: 160px; height: auto; border-radius: 4px; }
+.thumb-cell { width: 162px; min-height: 91px; }
+.thumb { width: 160px; height: 90px; object-fit: cover; border-radius: 4px; display: block; }
 .cp-wrap { border: 1px solid #2b3140; border-radius: 4px; background: #1c2028; }
 .cp-search { width: 100%; border: none; border-bottom: 1px solid #2b3140; border-radius: 4px 4px 0 0; background: #1c2028; }
 .cp-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.4rem; min-height: 1.8rem; }
