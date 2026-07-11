@@ -392,7 +392,7 @@
       } catch (_) {}
     }
     refresh();
-    _stateTimer = setInterval(refresh, 2000);
+    _stateTimer = setInterval(refresh, 5000);
   }
 
   // ── Live preview ─────────────────────────────────────────────────────────────

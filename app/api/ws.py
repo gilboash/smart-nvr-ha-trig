@@ -46,6 +46,20 @@ async def ws_preview(ws: WebSocket, camera_id: int, boxes: int = Query(1)) -> No
 
     max_w = settings.preview_max_width
 
+    loop = asyncio.get_event_loop()
+
+    def _encode_frame(bgr, dets):
+        h, w = bgr.shape[:2]
+        if max_w > 0 and w > max_w:
+            scale = max_w / w
+            frame = cv2.resize(bgr, (max_w, int(h * scale)), interpolation=cv2.INTER_LINEAR)
+        else:
+            frame = bgr.copy()
+        if with_boxes and dets:
+            frame = draw(frame, dets)
+        ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+        return bytes(buf) if ok else None
+
     try:
         while True:
             entry = manager.bus.latest_bgr(camera_id)
@@ -53,21 +67,11 @@ async def ws_preview(ws: WebSocket, camera_id: int, boxes: int = Query(1)) -> No
                 await asyncio.sleep(interval)
                 continue
             _, bgr = entry
-            # Resize before any copy/encode to keep memory proportional to output size
-            h, w = bgr.shape[:2]
-            if max_w > 0 and w > max_w:
-                scale = max_w / w
-                frame = cv2.resize(bgr, (max_w, int(h * scale)), interpolation=cv2.INTER_LINEAR)
-            else:
-                frame = bgr.copy()
-            if with_boxes and manager._inference is not None:
-                dets = manager._inference.latest_detections(camera_id)
-                if dets:
-                    frame = draw(frame, dets)
-            ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
-            if ok:
+            dets = manager._inference.latest_detections(camera_id) if with_boxes and manager._inference else []
+            data = await loop.run_in_executor(None, _encode_frame, bgr, dets)
+            if data:
                 try:
-                    await ws.send_bytes(bytes(buf))
+                    await ws.send_bytes(data)
                 except Exception:
                     break
             await asyncio.sleep(interval)
