@@ -1,11 +1,10 @@
-"""Always-on 1fps DVR recorder — flushes 5-minute H.264 MP4 segments continuously."""
+"""Always-on DVR recorder — streams frames to disk as they arrive, flushes to H.264 MP4."""
 from __future__ import annotations
 
 import logging
 import os
 import shutil
 import subprocess
-import tempfile
 import threading
 import time
 from pathlib import Path
@@ -27,12 +26,14 @@ class ContinuousRecorder:
         self._max_age_days = settings.recording_max_age_days
 
         self._lock = threading.Lock()
-        self._frames: dict[int, list] = {}              # camera_id → [(ts, jpeg_bytes)]
-        self._segment_start: dict[int, float] = {}      # camera_id → segment start ts
-        self._segment_db_id: dict[int, Optional[int]] = {}  # camera_id → open recordings row id
-        self._last_push_ts: dict[int, float] = {}       # throttle per camera
-        self._record_enabled: dict[int, bool] = {}      # lazily cached from DB
-        self._record_fps: dict[int, float] = {}         # lazily cached from DB
+        # Per-camera in-progress segment state — no frame list; frames go straight to disk
+        self._tmp_dir: dict[int, Path] = {}              # camera_id → staging dir
+        self._frame_idx: dict[int, int] = {}             # camera_id → next frame number
+        self._segment_start: dict[int, float] = {}       # camera_id → segment start ts
+        self._segment_db_id: dict[int, Optional[int]] = {}
+        self._last_push_ts: dict[int, float] = {}
+        self._record_enabled: dict[int, bool] = {}
+        self._record_fps: dict[int, float] = {}
 
         threading.Thread(target=self._cleanup_loop, daemon=True, name="rec-cleanup").start()
 
@@ -46,27 +47,33 @@ class ContinuousRecorder:
             return
         self._last_push_ts[camera_id] = ts
 
-        _, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 60])
+        ok, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 60])
+        if not ok:
+            return
         jpeg = buf.tobytes()
 
         flush_args: Optional[tuple] = None
         with self._lock:
             if camera_id not in self._segment_start:
-                self._frames[camera_id] = []
-                self._segment_start[camera_id] = ts
                 self._open_segment(camera_id, ts)
 
-            self._frames[camera_id].append((ts, jpeg))
+            # Write frame directly to disk — no in-memory accumulation
+            idx = self._frame_idx[camera_id]
+            frame_path = self._tmp_dir[camera_id] / f"frame_{idx:06d}.jpg"
+            self._frame_idx[camera_id] = idx + 1
 
             age = ts - self._segment_start[camera_id]
             if age >= self._segment_s:
-                frames = self._frames.pop(camera_id)
+                tmp_dir = self._tmp_dir.pop(camera_id)
+                frame_count = self._frame_idx.pop(camera_id)
                 seg_id = self._segment_db_id.pop(camera_id, None)
                 seg_start = self._segment_start.pop(camera_id)
-                self._frames[camera_id] = []
-                self._segment_start[camera_id] = ts
+                fps = self._record_fps.get(camera_id, 1.0)
                 self._open_segment(camera_id, ts)
-                flush_args = (camera_id, frames, seg_id, seg_start, ts)
+                flush_args = (camera_id, tmp_dir, frame_count, seg_id, seg_start, ts, fps)
+
+        # Write outside the lock so encoding/IO doesn't block push_frame
+        frame_path.write_bytes(jpeg)
 
         if flush_args is not None:
             threading.Thread(
@@ -108,6 +115,99 @@ class ContinuousRecorder:
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
+    def _open_segment(self, camera_id: int, ts: float) -> None:
+        """Create staging dir and DB row for a new in-progress segment. Caller holds lock."""
+        ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime(ts))
+        tmp_dir = self._dir / ".tmp" / f"cam{camera_id}_{ts_str}"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        self._tmp_dir[camera_id] = tmp_dir
+        self._frame_idx[camera_id] = 0
+        self._segment_start[camera_id] = ts
+
+        filename = f"cam{camera_id}_{ts_str}.mp4"
+        path = str(self._dir / filename)
+        from app.db import tx
+        try:
+            with tx() as conn:
+                cur = conn.execute(
+                    "INSERT INTO recordings (camera_id, start_ts, end_ts, path, frame_count) "
+                    "VALUES (?, ?, NULL, ?, 0)",
+                    (camera_id, ts, path),
+                )
+                self._segment_db_id[camera_id] = cur.lastrowid
+        except Exception:
+            logger.exception("failed to open segment for camera %d", camera_id)
+            self._segment_db_id[camera_id] = None
+
+    def _flush(
+        self, camera_id: int, tmp_dir: Path, frame_count: int,
+        seg_id: Optional[int], seg_start: float, end_ts: float, fps: float,
+    ) -> None:
+        if frame_count == 0:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return
+
+        ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime(seg_start))
+        out_path = self._dir / f"cam{camera_id}_{ts_str}.mp4"
+
+        try:
+            self._encode(tmp_dir, out_path, frame_count, fps)
+        except Exception:
+            logger.exception("failed to encode recording %s", out_path)
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return
+
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        if seg_id is not None:
+            from app.db import tx
+            try:
+                with tx() as conn:
+                    conn.execute(
+                        "UPDATE recordings SET end_ts = ?, frame_count = ? WHERE id = ?",
+                        (end_ts, frame_count, seg_id),
+                    )
+            except Exception:
+                logger.exception("failed to update recordings row %d", seg_id)
+
+        logger.info("recording segment saved: %s (%d frames)", out_path.name, frame_count)
+
+    def _encode(self, tmp_dir: Path, out_path: Path, frame_count: int, fps: float) -> None:
+        encode_timeout = max(60, frame_count * 2)
+        if shutil.which("ffmpeg"):
+            subprocess.run(
+                [
+                    "ffmpeg", "-y",
+                    "-r", str(fps),
+                    "-i", str(tmp_dir / "frame_%06d.jpg"),
+                    "-vcodec", "libx264", "-crf", "28", "-preset", "fast",
+                    "-movflags", "+faststart",
+                    str(out_path),
+                ],
+                check=True,
+                capture_output=True,
+                timeout=encode_timeout,
+            )
+        else:
+            # OpenCV fallback
+            first = cv2.imdecode(
+                np.frombuffer((tmp_dir / "frame_000000.jpg").read_bytes(), np.uint8),
+                cv2.IMREAD_COLOR,
+            )
+            if first is None:
+                raise RuntimeError("could not decode first frame")
+            h, w = first.shape[:2]
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w, h))
+            try:
+                for i in range(frame_count):
+                    data = (tmp_dir / f"frame_{i:06d}.jpg").read_bytes()
+                    bgr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+                    if bgr is not None:
+                        writer.write(bgr)
+            finally:
+                writer.release()
+
     def _is_record_enabled(self, camera_id: int) -> bool:
         with self._lock:
             if camera_id in self._record_enabled:
@@ -133,94 +233,6 @@ class ContinuousRecorder:
         with self._lock:
             self._record_fps[camera_id] = result
         return result
-
-    def _open_segment(self, camera_id: int, ts: float) -> None:
-        """Insert a new DB row for the in-progress segment. Called while holding self._lock."""
-        ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime(ts))
-        filename = f"cam{camera_id}_{ts_str}.mp4"
-        path = str(self._dir / filename)
-        from app.db import tx
-        try:
-            with tx() as conn:
-                cur = conn.execute(
-                    "INSERT INTO recordings (camera_id, start_ts, end_ts, path, frame_count) "
-                    "VALUES (?, ?, NULL, ?, 0)",
-                    (camera_id, ts, path),
-                )
-                self._segment_db_id[camera_id] = cur.lastrowid
-        except Exception:
-            logger.exception("failed to open segment for camera %d", camera_id)
-            self._segment_db_id[camera_id] = None
-
-    def _flush(
-        self, camera_id: int, frames: list, seg_id: Optional[int],
-        seg_start: float, end_ts: float
-    ) -> None:
-        if not frames:
-            return
-        ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime(seg_start))
-        filename = f"cam{camera_id}_{ts_str}.mp4"
-        out_path = self._dir / filename
-
-        try:
-            self._write_video(frames, out_path)
-        except Exception:
-            logger.exception("failed to write recording %s", out_path)
-            return
-
-        if seg_id is not None:
-            from app.db import tx
-            try:
-                with tx() as conn:
-                    conn.execute(
-                        "UPDATE recordings SET end_ts = ?, frame_count = ? WHERE id = ?",
-                        (end_ts, len(frames), seg_id),
-                    )
-            except Exception:
-                logger.exception("failed to update recordings row %d", seg_id)
-
-        logger.info("recording segment saved: %s (%d frames)", filename, len(frames))
-
-    def _write_video(self, frames: list, out_path: Path) -> None:
-        if shutil.which("ffmpeg"):
-            self._write_ffmpeg(frames, out_path)
-        else:
-            self._write_cv2(frames, out_path)
-
-    def _write_ffmpeg(self, frames: list, out_path: Path) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            for i, (_, jpeg) in enumerate(frames):
-                (tmp_path / f"frame_{i:06d}.jpg").write_bytes(jpeg)
-            encode_timeout = max(60, len(frames) * 2)
-            subprocess.run(
-                [
-                    "ffmpeg", "-y",
-                    "-r", "1",
-                    "-i", str(tmp_path / "frame_%06d.jpg"),
-                    "-vcodec", "libx264", "-crf", "28", "-preset", "fast",
-                    "-movflags", "+faststart",
-                    str(out_path),
-                ],
-                check=True,
-                capture_output=True,
-                timeout=encode_timeout,
-            )
-
-    def _write_cv2(self, frames: list, out_path: Path) -> None:
-        first = cv2.imdecode(np.frombuffer(frames[0][1], np.uint8), cv2.IMREAD_COLOR)
-        if first is None:
-            raise RuntimeError("could not decode first frame")
-        h, w = first.shape[:2]
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(str(out_path), fourcc, 1.0, (w, h))
-        try:
-            for _, jpeg in frames:
-                bgr = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
-                if bgr is not None:
-                    out.write(bgr)
-        finally:
-            out.release()
 
     def _cleanup_loop(self) -> None:
         while True:
