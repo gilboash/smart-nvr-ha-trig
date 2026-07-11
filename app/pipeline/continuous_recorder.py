@@ -98,27 +98,42 @@ class ContinuousRecorder:
                 self._record_fps.pop(camera_id, None)
 
     def cleanup_old(self) -> int:
-        if self._max_age_days <= 0:
-            return 0
         from app.db import get_conn, tx
-        cutoff = time.time() - self._max_age_days * 86400
-        rows = get_conn().execute(
-            "SELECT id, path FROM recordings WHERE start_ts < ? AND end_ts IS NOT NULL",
-            (cutoff,),
+        removed = 0
+
+        # Remove age-expired segments
+        if self._max_age_days > 0:
+            cutoff = time.time() - self._max_age_days * 86400
+            rows = get_conn().execute(
+                "SELECT id, path FROM recordings WHERE start_ts < ? AND end_ts IS NOT NULL",
+                (cutoff,),
+            ).fetchall()
+            for r in rows:
+                try:
+                    os.remove(r["path"])
+                except OSError:
+                    pass
+                with tx() as conn:
+                    conn.execute("DELETE FROM recordings WHERE id = ?", (r["id"],))
+                removed += 1
+            if removed:
+                logger.info("recording cleanup: removed %d segments older than %d days", removed, self._max_age_days)
+
+        # Remove orphaned DB rows whose files are missing from disk
+        orphans = get_conn().execute(
+            "SELECT id, path FROM recordings WHERE end_ts IS NOT NULL"
         ).fetchall()
-        if not rows:
-            return 0
-        count = 0
-        for r in rows:
-            try:
-                os.remove(r["path"])
-            except OSError:
-                pass
-            with tx() as conn:
-                conn.execute("DELETE FROM recordings WHERE id = ?", (r["id"],))
-            count += 1
-        logger.info("recording cleanup: removed %d segments older than %d days", count, self._max_age_days)
-        return count
+        orphan_count = 0
+        for r in orphans:
+            if not Path(r["path"]).exists():
+                with tx() as conn:
+                    conn.execute("DELETE FROM recordings WHERE id = ?", (r["id"],))
+                orphan_count += 1
+        if orphan_count:
+            logger.info("recording cleanup: removed %d orphaned DB entries (files missing)", orphan_count)
+            removed += orphan_count
+
+        return removed
 
     # ── Internal ──────────────────────────────────────────────────────────────
 

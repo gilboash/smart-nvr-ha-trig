@@ -83,14 +83,22 @@
     for (const e of events) tbody.appendChild(makeRow(e));
   }
 
+  // IntersectionObserver — loads snapshot only when row scrolls into view
+  const _imgObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        img.src = img.dataset.src;
+        _imgObserver.unobserve(img);
+      }
+    }
+  }, { rootMargin: '200px' });
+
   function makeRow(e) {
     const tr = document.createElement('tr');
-    const thumb = e.snapshot_path
-      ? `<img class="thumb" src="/api/events/${e.id}/snapshot.jpg" alt="" loading="lazy">`
-      : '<span class="badge">no snap</span>';
     const open = e.end_ts == null;
     tr.innerHTML = `
-      <td>${thumb}</td>
+      <td class="thumb-cell"></td>
       <td>${esc(cameras[e.camera_id] || ('#' + e.camera_id))}</td>
       <td>${esc(e.class_name)}</td>
       <td>${e.zone_id ?? '—'}</td>
@@ -99,6 +107,16 @@
       <td>${fmt(e.start_ts)}</td>
       <td>${open ? '<span class="badge open">open</span>' : fmt(e.end_ts)}</td>
     `;
+    if (e.snapshot_path) {
+      const img = document.createElement('img');
+      img.className = 'thumb';
+      img.alt = '';
+      img.dataset.src = `/api/events/${e.id}/snapshot.jpg`;
+      tr.querySelector('.thumb-cell').appendChild(img);
+      _imgObserver.observe(img);
+    } else {
+      tr.querySelector('.thumb-cell').innerHTML = '<span class="badge">no snap</span>';
+    }
     return tr;
   }
 
