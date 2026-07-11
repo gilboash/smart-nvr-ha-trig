@@ -17,6 +17,10 @@ from app.settings import settings
 
 logger = logging.getLogger("snvr.recorder")
 
+# Global semaphore — limits concurrent ffmpeg encodes to avoid RAM spikes
+# when many cameras flush segments at the same time.
+_encode_sem = threading.Semaphore(2)
+
 
 class ContinuousRecorder:
     def __init__(self) -> None:
@@ -55,7 +59,10 @@ class ContinuousRecorder:
         flush_args: Optional[tuple] = None
         with self._lock:
             if camera_id not in self._segment_start:
-                self._open_segment(camera_id, ts)
+                # Stagger first flush: spread cameras across the segment window
+                # using camera_id mod segment_s so they never all flush together
+                offset_s = (camera_id * (self._segment_s / 7)) % self._segment_s
+                self._open_segment(camera_id, ts, offset_s=offset_s)
 
             # Write frame directly to disk — no in-memory accumulation
             idx = self._frame_idx[camera_id]
@@ -115,14 +122,15 @@ class ContinuousRecorder:
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-    def _open_segment(self, camera_id: int, ts: float) -> None:
+    def _open_segment(self, camera_id: int, ts: float, offset_s: float = 0.0) -> None:
         """Create staging dir and DB row for a new in-progress segment. Caller holds lock."""
         ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime(ts))
         tmp_dir = self._dir / ".tmp" / f"cam{camera_id}_{ts_str}"
         tmp_dir.mkdir(parents=True, exist_ok=True)
         self._tmp_dir[camera_id] = tmp_dir
         self._frame_idx[camera_id] = 0
-        self._segment_start[camera_id] = ts
+        # offset_s backdates the segment start so cameras stagger their flush times
+        self._segment_start[camera_id] = ts - offset_s
 
         filename = f"cam{camera_id}_{ts_str}.mp4"
         path = str(self._dir / filename)
@@ -174,39 +182,40 @@ class ContinuousRecorder:
 
     def _encode(self, tmp_dir: Path, out_path: Path, frame_count: int, fps: float) -> None:
         encode_timeout = max(60, frame_count * 2)
-        if shutil.which("ffmpeg"):
-            subprocess.run(
-                [
-                    "ffmpeg", "-y",
-                    "-r", str(fps),
-                    "-i", str(tmp_dir / "frame_%06d.jpg"),
-                    "-vcodec", "libx264", "-crf", "28", "-preset", "fast",
-                    "-movflags", "+faststart",
-                    str(out_path),
-                ],
-                check=True,
-                capture_output=True,
-                timeout=encode_timeout,
-            )
-        else:
-            # OpenCV fallback
-            first = cv2.imdecode(
-                np.frombuffer((tmp_dir / "frame_000000.jpg").read_bytes(), np.uint8),
-                cv2.IMREAD_COLOR,
-            )
-            if first is None:
-                raise RuntimeError("could not decode first frame")
-            h, w = first.shape[:2]
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w, h))
-            try:
-                for i in range(frame_count):
-                    data = (tmp_dir / f"frame_{i:06d}.jpg").read_bytes()
-                    bgr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
-                    if bgr is not None:
-                        writer.write(bgr)
-            finally:
-                writer.release()
+        with _encode_sem:  # at most 2 concurrent encodes regardless of camera count
+            if shutil.which("ffmpeg"):
+                subprocess.run(
+                    [
+                        "ffmpeg", "-y",
+                        "-r", str(fps),
+                        "-i", str(tmp_dir / "frame_%06d.jpg"),
+                        "-vcodec", "libx264", "-crf", "28", "-preset", "fast",
+                        "-movflags", "+faststart",
+                        str(out_path),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    timeout=encode_timeout,
+                )
+            else:
+                # OpenCV fallback
+                first = cv2.imdecode(
+                    np.frombuffer((tmp_dir / "frame_000000.jpg").read_bytes(), np.uint8),
+                    cv2.IMREAD_COLOR,
+                )
+                if first is None:
+                    raise RuntimeError("could not decode first frame")
+                h, w = first.shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w, h))
+                try:
+                    for i in range(frame_count):
+                        data = (tmp_dir / f"frame_{i:06d}.jpg").read_bytes()
+                        bgr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+                        if bgr is not None:
+                            writer.write(bgr)
+                finally:
+                    writer.release()
 
     def _is_record_enabled(self, camera_id: int) -> bool:
         with self._lock:
