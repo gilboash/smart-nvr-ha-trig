@@ -76,15 +76,14 @@ def ensure_default_admin(forced_password: str = "") -> None:
             update_password("admin", forced_password)
             logger.info("admin password updated from SNVR_ADMIN_PASSWORD env var")
         return
-    password = forced_password or secrets.token_urlsafe(12)
+    password = forced_password or "12345678"
     create_user("admin", password)
-    if not forced_password:
-        logger.warning("=" * 60)
-        logger.warning("FIRST BOOT — default admin credentials:")
-        logger.warning("  username: admin")
-        logger.warning("  password: %s", password)
-        logger.warning("Change this at http://<host>:7070/settings")
-        logger.warning("=" * 60)
+    logger.warning("=" * 60)
+    logger.warning("FIRST BOOT — default admin credentials:")
+    logger.warning("  username: admin")
+    logger.warning("  password: %s", password)
+    logger.warning("Change this at http://<host>:7070/settings")
+    logger.warning("=" * 60)
 
 
 def session_user(request: Request) -> str | None:

@@ -6,7 +6,8 @@ Lightweight NVR that runs YOLO object detection on RTSP cameras, classifies zone
 - Per-camera detection zones with configurable classes, FPS, hysteresis, and confidence threshold
 - State zones (open/closed, present/absent, etc.) trained with 3–5 example photos per label — no API key, fully local
 - Home Assistant MQTT Discovery: cameras appear as HA devices, zones as `binary_sensor` / `sensor` entities automatically
-- Web UI for camera management, zone drawing, training, live preview, and event history
+- **Continuous DVR recording**: always-on H.264 MP4 segments per camera, configurable FPS and retention, with a visual timeline on the Recordings page
+- Web UI for camera management, zone drawing, training, live preview, event history, and recordings timeline
 - Settings page writes directly to `.env` — no rebuild needed for config changes
 
 ---
@@ -47,11 +48,7 @@ docker compose down
 
 Open `http://localhost:7070` — or `http://<windows-ip>:7070` from any device on the LAN.
 
-**First login**: the admin password is auto-generated on first boot and printed in the logs:
-```
-docker compose logs | findstr "admin password"
-```
-Or set it in advance by adding `SNVR_ADMIN_PASSWORD=yourpassword` to `.env`.
+**First login**: default credentials are `admin` / `12345678`. Change the password immediately at **Settings → Change password**, or set `SNVR_ADMIN_PASSWORD=yourpassword` in `.env` before first boot.
 
 **GPU note**: the compose file reserves 1 NVIDIA GPU via `nvidia-container-toolkit`. Requires Windows 11 or Windows 10 21H2+ for WSL2 GPU passthrough. To run on CPU only, remove the `deploy.resources` block from `docker-compose.yml` and set `SNVR_DEVICE=cpu` in `.env`.
 
@@ -162,6 +159,10 @@ All camera and zone config is stored in SQLite and managed from the web UI. The 
 | `SNVR_MQTT_DISCOVERY_PREFIX` | `homeassistant` | HA MQTT discovery prefix |
 | `SNVR_MQTT_TOPIC_PREFIX` | `naco_nvr` | State topic prefix |
 | `SNVR_STATE_CHECK_INTERVAL` | `10` | Seconds between state zone classification cycles |
+| `SNVR_RECORDINGS_DIR` | `./data/recordings` | Directory for continuous DVR MP4 segments |
+| `SNVR_RECORDING_SEGMENT_MIN` | `5` | Flush a new MP4 segment every N minutes per camera |
+| `SNVR_RECORDING_MAX_AGE_DAYS` | `7` | Delete recordings older than N days (0 = keep forever) |
+| `SNVR_SNAPSHOT_MAX_AGE_DAYS` | `7` | Delete event snapshots older than N days (0 = keep forever) |
 
 YOLO model weights (`yolov8n.pt`) are downloaded automatically on first run if not present in `SNVR_MODEL_DIR`. In Docker the model is saved to the mounted `/models` volume and persists across restarts.
 
@@ -202,7 +203,47 @@ The raw classifier confidence is always shown in the **Current state** column of
 
 ---
 
-## Notes
+## Continuous recording
+
+The system records all enabled cameras continuously as rolling H.264 MP4 segments. Recordings are independent of detections — every second of video is saved regardless of what is happening in the scene.
+
+### Enable recording and set FPS per camera
+
+1. Open the **Cameras** page and click the camera name.
+2. In the camera edit form, check **Record enabled**.
+3. Set **Record FPS** — how many frames per second to store. `1.0` is the default and keeps file sizes small. Increase to `2.0`–`5.0` for smoother playback on busy cameras. Note that recording FPS is independent of detection FPS.
+4. Click **Save camera**.
+
+Recording starts immediately and persists across restarts. Each camera writes to its own segment file; segments are flushed on a rolling schedule so they never all flush at the same moment.
+
+### View the recordings timeline
+
+Open the **Recordings** page (`/clips`). You will see:
+
+- A **timeline bar** spanning the last 6 hours (default), one row per camera, colour-coded
+- **Event ticks** overlaid on each camera's bar — coloured by detected class (person, car, etc.) — showing exactly when detections occurred relative to the recording
+- **Segment blocks** showing the time spans of saved MP4 files; click any block to download or play the file
+- A **range selector** to zoom out to 12 h or 24 h
+
+Zones with **Show on timeline** unchecked (configured in the zone editor) are excluded from the event tick overlay.
+
+### Configure retention
+
+Go to **Settings → Continuous recording**:
+
+| Setting | What it does |
+|---|---|
+| **Segment length (min)** | How long each MP4 file covers. Smaller = more files but easier to seek; larger = fewer files. Default: 5 min. |
+| **Delete recordings older than (days)** | Rolling retention window. `0` keeps all recordings. Default: 7 days. |
+| **Delete event snapshots older than (days)** | Cleans up JPEG thumbnails shown in the Events page. Default: 7 days. |
+
+Changes to these fields are saved to `.env`. Restart the container to apply (`docker compose up -d`).
+
+**Delete all recordings**: the red **Delete all recordings** button removes every completed segment from disk and the database immediately, without waiting for the retention window.
+
+---
+
+## Training state zones (few-shot)
 
 - **Concurrent RTSP sessions**: cheap cameras cap at 1–2 sessions. If Frigate already holds the main stream, point this at the sub-stream — or use go2rtc to restream so multiple readers can connect.
 - **Custom YOLO models**: place any `.pt` file in `config/models/` (or the Docker `/models` volume) and set the **Model** field on a camera to its filename. Useful for detecting classes not in COCO (e.g. pets, specific objects).
