@@ -2,6 +2,10 @@
 
 Lightweight NVR that runs YOLO object detection on RTSP cameras, classifies zone states with a few-shot visual classifier (no cloud), and pushes events to Home Assistant via MQTT Discovery — all from a self-hosted web UI.
 
+## Video tutorial
+
+▶ [Watch the setup walkthrough on YouTube](https://www.youtube.com/watch?v=RtvlNTbDmRE&feature=youtu.be)
+
 **Key features**
 - Per-camera detection zones with configurable classes, FPS, hysteresis, and confidence threshold
 - State zones (open/closed, present/absent, etc.) trained with 3–5 example photos per label — no API key, fully local
