@@ -14,6 +14,8 @@ Lightweight NVR that runs YOLO object detection on RTSP cameras, classifies zone
 
 ## Quick start
 
+> **Default login — all install options**: username `admin`, password `12345678`. Change it at **Settings → Change password** after first login.
+
 ### Prerequisites
 
 | | Mac | Windows |
@@ -83,7 +85,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-Open `http://localhost:7070`.
+Open `http://localhost:7070`. Default login: `admin` / `12345678`.
 
 > **Tip**: on Apple Silicon, `SNVR_DEVICE=mps` gives a significant speedup over CPU. Set it in `.env` before starting.
 
@@ -105,7 +107,7 @@ cp .env.example .env
 ./scripts/dev_run.sh
 ```
 
-Open `http://localhost:7070`.
+Open `http://localhost:7070`. Default login: `admin` / `12345678`.
 
 `dev_run.sh` starts uvicorn with `--reload` so code changes apply immediately without restarting.
 
@@ -132,7 +134,7 @@ copy .env.example .env
 python -m uvicorn app.main:app --host 0.0.0.0 --port 7070 --reload
 ```
 
-Open `http://localhost:7070` locally or `http://<windows-ip>:7070` from other devices. Run `ipconfig` to find your IP.
+Open `http://localhost:7070` locally or `http://<windows-ip>:7070` from other devices. Run `ipconfig` to find your IP. Default login: `admin` / `12345678`.
 
 For NVIDIA GPU acceleration, set `SNVR_DEVICE=cuda:0` in `.env`.
 
