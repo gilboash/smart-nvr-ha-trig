@@ -7,7 +7,7 @@ import cv2
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.db import get_conn
-from app.pipeline.overlay import draw
+from app.pipeline.overlay import Detection, draw
 from app.settings import settings
 
 router = APIRouter()
@@ -53,6 +53,20 @@ async def ws_preview(ws: WebSocket, camera_id: int, boxes: int = Query(1)) -> No
         if max_w > 0 and w > max_w:
             scale = max_w / w
             frame = cv2.resize(bgr, (max_w, int(h * scale)), interpolation=cv2.INTER_LINEAR)
+            # Scale detection coordinates to match the resized frame
+            if with_boxes and dets:
+                dets = [
+                    Detection(
+                        class_name=d.class_name,
+                        confidence=d.confidence,
+                        bbox_xyxy=(
+                            int(d.bbox_xyxy[0] * scale), int(d.bbox_xyxy[1] * scale),
+                            int(d.bbox_xyxy[2] * scale), int(d.bbox_xyxy[3] * scale),
+                        ),
+                        zone_id=d.zone_id,
+                    )
+                    for d in dets
+                ]
         else:
             frame = bgr.copy()
         if with_boxes and dets:
