@@ -35,10 +35,15 @@ logger = logging.getLogger("snvr.capture.ffmpeg")
 
 @lru_cache(maxsize=1)
 def _rtsp_timeout_flag() -> str:
-    """Socket-timeout option name: ffmpeg <5 spells it -stimeout, >=5 -timeout.
+    """Socket-timeout option name for the rtsp demuxer.
 
-    Guessing wrong makes ffmpeg exit with "Unrecognized option" on every
-    reconnect, which looks exactly like an unreachable camera.
+    Order matters: ffmpeg 4.x exposes BOTH options, and there `-timeout` means
+    "seconds to wait for an INCOMING connection" and implies listen mode — using
+    it makes ffprobe sit waiting to be dialled instead of dialling the camera,
+    so every probe times out and looks like an unreachable camera. `-stimeout`
+    is the socket I/O timeout we actually want. ffmpeg >=5 dropped `-stimeout`
+    and redefined `-timeout` to mean socket I/O, so prefer -stimeout whenever
+    it exists and only fall back to -timeout when it does not.
     """
     try:
         out = subprocess.run(
@@ -47,7 +52,7 @@ def _rtsp_timeout_flag() -> str:
         ).stdout
     except Exception:
         return "-stimeout"
-    return "-timeout" if "-timeout" in out else "-stimeout"
+    return "-stimeout" if "-stimeout" in out else "-timeout"
 
 
 @lru_cache(maxsize=1)
