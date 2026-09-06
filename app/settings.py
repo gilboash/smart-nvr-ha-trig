@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     preview_fps: float = 2.0
     preview_max_width: int = 1280   # resize preview frames to this width (0 = no resize)
     frame_queue_max: int = 4
+
+    # Capture backend: "opencv" decodes in-process in software; "ffmpeg" spawns
+    # one ffmpeg per camera so decode can run on GPU/iGPU silicon instead.
+    capture_backend: str = "opencv"
+    # ffmpeg -hwaccel value: "cuda" (NVDEC), "vaapi", "qsv", or "" for software.
+    # Only used when capture_backend == "ffmpeg".
+    capture_hwaccel: str = ""
+    # Downscale captured frames to this width (0 = keep native).
+    capture_width: int = 0
     state_check_interval: float = 10.0  # seconds between VQA queries per zone
 
     session_secret: str = ""
@@ -43,6 +52,12 @@ class Settings(BaseSettings):
     recordings_dir: Path = Path("./data/recordings")
     recording_segment_min: int = 5     # flush a new MP4 segment every N minutes
     recording_max_age_days: int = 7    # rolling retention window (0 = keep forever)
+    # Segment encoder: "libx264" (CPU) or "h264_nvenc" (NVIDIA GPU).
+    # NVENC needs 'video' in NVIDIA_DRIVER_CAPABILITIES, same as NVDEC.
+    recording_encoder: str = "libx264"
+    # libx264 defaults to ~1.5x core count of threads and will take every core
+    # (measured 512% on an 8-thread host), starving the capture threads.
+    recording_encode_threads: int = 2
 
     # MQTT / Home Assistant integration (leave mqtt_host blank to disable)
     mqtt_host: str = ""

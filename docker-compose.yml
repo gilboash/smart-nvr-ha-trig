@@ -24,6 +24,24 @@ services:
       SNVR_MODEL_DIR: /models
       SNVR_LOG_LEVEL: INFO
       SNVR_DEVICE: "${SNVR_DEVICE:-cuda:0}"
+      # Decode on the GPU's NVDEC block instead of in-process in Python.
+      # Requires 'video' in NVIDIA_DRIVER_CAPABILITIES below.
+      SNVR_CAPTURE_BACKEND: "${SNVR_CAPTURE_BACKEND:-ffmpeg}"
+      SNVR_CAPTURE_HWACCEL: "${SNVR_CAPTURE_HWACCEL:-cuda}"
+      SNVR_CAPTURE_WIDTH: "${SNVR_CAPTURE_WIDTH:-0}"
+      # Segment encoding: h264_nvenc moves it off the CPU entirely.
+      SNVR_RECORDING_ENCODER: "${SNVR_RECORDING_ENCODER:-h264_nvenc}"
+      SNVR_RECORDING_ENCODE_THREADS: "${SNVR_RECORDING_ENCODE_THREADS:-2}"
+      # compute,utility alone does NOT expose libnvcuvid — NVDEC needs 'video'.
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,video
+      # Keep large frame buffers on mmap so they return to the OS on free,
+      # instead of fragmenting glibc arenas and inflating RSS over weeks.
+      MALLOC_MMAP_THRESHOLD_: "131072"
+      MALLOC_TRIM_THRESHOLD_: "131072"
+      MALLOC_ARENA_MAX: "2"
+    # Contain the NVR so an OOM here cannot take down the WSL VM (and anything
+    # else sharing this host) with it. restart: unless-stopped brings it back.
+    mem_limit: 6500m
     deploy:
       resources:
         reservations:

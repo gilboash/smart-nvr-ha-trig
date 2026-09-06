@@ -7,7 +7,6 @@ Both run in the same thread to avoid GPU contention.
 from __future__ import annotations
 
 import asyncio
-import copy
 import logging
 import sys
 import threading
@@ -285,8 +284,11 @@ class InferenceWorker:
                 bbox_xyxy=(int(x1), int(y1), int(x2), int(y2)), zone_id=zone_id,
             ))
 
-            frame_copy = copy.copy(frame.bgr)
-            def _saver(episode_id: int, _bgr=frame_copy):
+            # No copy: aggregator.observe() calls _saver synchronously before
+            # returning, so the frame never outlives this call. Copying here ran
+            # once per detection per frame (~6 MB at 1080p) and only got used on
+            # episode open.
+            def _saver(episode_id: int, _bgr=frame.bgr):
                 return self.snapshot_store.save(episode_id, _bgr)
 
             event, _ = self.aggregator.observe(
@@ -349,8 +351,7 @@ class InferenceWorker:
                 f", below threshold {zone.state_threshold:.0%}" if event_label == "unknown" else "",
             )
 
-            frame_copy = copy.copy(frame.bgr)
-            def _saver(ep_id: int, _bgr=frame_copy):
+            def _saver(ep_id: int, _bgr=frame.bgr):
                 return self.snapshot_store.save(ep_id, _bgr)
 
             event, _ = self.aggregator.observe(

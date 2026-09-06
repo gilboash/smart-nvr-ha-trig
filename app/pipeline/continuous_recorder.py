@@ -133,6 +133,35 @@ class ContinuousRecorder:
             logger.info("recording cleanup: removed %d orphaned DB entries (files missing)", orphan_count)
             removed += orphan_count
 
+        removed += self._cleanup_orphan_staging()
+        return removed
+
+    def _cleanup_orphan_staging(self) -> int:
+        """Delete .tmp staging dirs left behind by crashes/restarts.
+
+        _open_segment() creates one per in-progress segment; if the process dies
+        before the flush completes, nothing ever removes it. They accumulate
+        across restarts and are pure waste (107 dirs / 2.1 GB observed in prod).
+        """
+        tmp_root = self._dir / ".tmp"
+        if not tmp_root.is_dir():
+            return 0
+        with self._lock:
+            active = {str(d) for d in self._tmp_dir.values()}
+        cutoff = time.time() - max(2 * self._segment_s, 3600)
+        removed = 0
+        for d in tmp_root.iterdir():
+            if not d.is_dir() or str(d) in active:
+                continue
+            try:
+                if d.stat().st_mtime > cutoff:
+                    continue          # may still be filling
+                shutil.rmtree(d, ignore_errors=True)
+                removed += 1
+            except OSError:
+                pass
+        if removed:
+            logger.info("recording cleanup: removed %d orphaned staging dirs", removed)
         return removed
 
     # ── Internal ──────────────────────────────────────────────────────────────
@@ -199,18 +228,25 @@ class ContinuousRecorder:
         encode_timeout = max(60, frame_count * 2)
         with _encode_sem:  # at most 2 concurrent encodes regardless of camera count
             if shutil.which("ffmpeg"):
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-r", str(fps),
+                    "-i", str(tmp_dir / "frame_%06d.jpg"),
+                ]
+                if settings.recording_encoder == "h264_nvenc":
+                    # Encode on the GPU's NVENC block. Pascal caps concurrent
+                    # NVENC sessions at 2, which _encode_sem already enforces.
+                    cmd += ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "28"]
+                else:
+                    # Unbounded libx264 grabs every core and starves the capture
+                    # threads; cap it explicitly.
+                    cmd += [
+                        "-c:v", "libx264", "-crf", "28", "-preset", "fast",
+                        "-threads", str(settings.recording_encode_threads),
+                    ]
+                cmd += ["-movflags", "+faststart", str(out_path)]
                 subprocess.run(
-                    [
-                        "ffmpeg", "-y",
-                        "-r", str(fps),
-                        "-i", str(tmp_dir / "frame_%06d.jpg"),
-                        "-vcodec", "libx264", "-crf", "28", "-preset", "fast",
-                        "-movflags", "+faststart",
-                        str(out_path),
-                    ],
-                    check=True,
-                    capture_output=True,
-                    timeout=encode_timeout,
+                    cmd, check=True, capture_output=True, timeout=encode_timeout,
                 )
             else:
                 # OpenCV fallback

@@ -125,3 +125,31 @@ class CaptureWorker:
                     self.bus.submit(Frame(self.cfg.camera_id, now, frame), for_inference)
             finally:
                 cap.release()
+
+
+def make_capture_worker(cfg: CameraConfig, bus: FrameBus):
+    """Build the capture worker for the configured backend.
+
+    Falls back to the OpenCV worker if ffmpeg is unusable, so a bad setting
+    degrades a live NVR to software decode rather than to no cameras.
+    """
+    from app.settings import settings
+
+    if settings.capture_backend != "ffmpeg":
+        return CaptureWorker(cfg, bus)
+
+    from app.pipeline.ffmpeg_capture import FFmpegCaptureWorker, preflight
+
+    ok, msg = preflight(settings.capture_hwaccel)
+    if not ok:
+        if "not found on PATH" in msg:
+            logger.error("capture_backend=ffmpeg unusable (%s) — using OpenCV", msg)
+            return CaptureWorker(cfg, bus)
+        # ffmpeg works, only the accelerator is missing. Still worth using the
+        # subprocess path (decode leaves the GIL, frames are dropped before
+        # Python), but say so loudly — this is the misconfiguration people lose
+        # hours to.
+        logger.error("hardware decode unavailable: %s", msg)
+    else:
+        logger.info("capture backend: %s", msg)
+    return FFmpegCaptureWorker(cfg, bus)

@@ -9,7 +9,7 @@ import logging
 import threading
 
 from app.db import get_conn
-from app.pipeline.capture import CameraConfig, CaptureWorker
+from app.pipeline.capture import CameraConfig, make_capture_worker
 from app.pipeline.frame_bus import FrameBus
 
 logger = logging.getLogger("snvr.pipeline")
@@ -19,7 +19,7 @@ class PipelineManager:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self.bus = FrameBus()
-        self._captures: dict[int, CaptureWorker] = {}
+        self._captures: dict = {}   # camera_id -> CaptureWorker | FFmpegCaptureWorker
         self._inference = None
         self.publishers: list = []
 
@@ -93,7 +93,7 @@ class PipelineManager:
                 if cam_id in self._captures:
                     self._captures[cam_id].update_config(cfg)
                     continue
-                worker = CaptureWorker(cfg, self.bus)
+                worker = make_capture_worker(cfg, self.bus)
                 self._captures[cam_id] = worker
                 if cfg.enabled:
                     worker.start()
