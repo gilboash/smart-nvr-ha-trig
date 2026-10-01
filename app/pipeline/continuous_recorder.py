@@ -237,6 +237,10 @@ class ContinuousRecorder:
                     # Encode on the GPU's NVENC block. Pascal caps concurrent
                     # NVENC sessions at 2, which _encode_sem already enforces.
                     cmd += ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "28"]
+                elif settings.recording_encoder == "h264_qsv":
+                    # Intel Quick Sync. -cq is nvenc-specific; QSV's equivalent
+                    # constant-quality knob is -global_quality (ICQ rate control).
+                    cmd += ["-c:v", "h264_qsv", "-preset", "medium", "-global_quality", "28"]
                 else:
                     # Unbounded libx264 grabs every core and starves the capture
                     # threads; cap it explicitly.

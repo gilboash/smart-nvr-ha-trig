@@ -235,14 +235,24 @@ class InferenceWorker:
             return
 
         h, w = frame.bgr.shape[:2]
+        # 640 needs ~185ms/frame on this CPU (2 threads) — 5.4 fps sustained,
+        # short of the ~6.5/sec the 7 cameras need in aggregate, so CPU falls
+        # behind under real load. 480 cuts that to ~115ms (8.7 fps) with only
+        # a modest accuracy hit. GPU paths have the headroom to stay at 640.
+        infer_imgsz = 480 if self.device == "cpu" else 640
         results = self._model.predict(
             frame.bgr,
             classes=class_ids,
             device=self.device,
             verbose=False,
-            imgsz=640,
+            imgsz=infer_imgsz,
             half=self.device != "cpu",
         )
+        # predict() re-resolves the device every call and, on CPU, that resets
+        # torch's thread pool back to ultralytics' default (cores-1) — pin it
+        # back down so a handful of detections/sec doesn't peg every core.
+        if self.device == "cpu":
+            torch.set_num_threads(2)
         if not results:
             return
         r = results[0]

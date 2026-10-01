@@ -3,6 +3,13 @@ import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import torch
+# CPU inference here is a handful of small models at ~7 calls/sec total, not
+# a throughput workload — torch's default of one thread per core makes every
+# call pay cross-core coordination overhead for no benefit and pegs all 6
+# cores. Two threads keeps a little intra-op parallelism without that cost.
+torch.set_num_threads(2)
+
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles

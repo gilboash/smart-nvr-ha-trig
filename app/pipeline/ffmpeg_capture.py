@@ -212,6 +212,11 @@ class FFmpegCaptureWorker:
             # works for H.264 and HEVC cameras. Frames land back in system
             # memory, which is where Ultralytics needs them anyway.
             cmd += ["-hwaccel", hw]
+            if hw == "qsv":
+                # Unlike cuda, QSV's default hwaccel output is an opaque GPU
+                # surface — the software fps/scale filters below can't touch
+                # it. Force NV12 in system memory instead of adding hwdownload.
+                cmd += ["-hwaccel_output_format", "nv12"]
         cmd += ["-i", self.cfg.rtsp_url]
         cmd += ["-an", "-sn"]
 

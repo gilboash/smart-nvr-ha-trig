@@ -24,3 +24,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.pt
+
+# Vendored Windows binaries (ffmpeg/ffprobe ~222MB each) - not for git
+bin/
